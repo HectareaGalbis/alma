@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "garbage_collector.hpp"
-#include "object.hpp"
+#include "gc/gc.hpp"
+#include "object/object.hpp"
 #include <filesystem>
 
 class Environment;

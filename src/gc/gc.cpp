@@ -1,8 +1,5 @@
 
 #include "gc.hpp"
-#include "alma.hpp"
-#include "debug.hpp"
-#include "object.hpp"
 #include <stdexcept>
 
 // --------------------------------------------------------------------------------

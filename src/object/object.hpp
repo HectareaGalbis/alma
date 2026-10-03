@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "gc.hpp"
+#include "gc/gc.hpp"
 #include <string>
 
 namespace ALMA::core {
