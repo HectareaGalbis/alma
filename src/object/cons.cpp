@@ -5,6 +5,7 @@
 #include "package.hpp"
 #include "procedure.hpp"
 #include "symbol.hpp"
+#include <sstream>
 
 // -----------------------------------------------------------------------------
 
@@ -75,8 +76,10 @@ ObjectRef<Object> Cons::eval(ObjectRef<Object> self [[maybe_unused]], ObjectRef<
     return this->alma.apply(this->alma.eval(this->car, environment), this->cdr, environment);
 }
 
-std::string Cons::to_string()
+std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
+    Alma& alma = Alma::alma;
+
     std::stringstream s;
     s << "(";
     s << alma.to_string(this->car);

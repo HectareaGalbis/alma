@@ -8,7 +8,7 @@ String::String(Alma& _alma, const std::string& _content)
 {
 }
 
-std::string String::to_string()
+std::string String::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     std::string ss;
     ss.push_back('"');

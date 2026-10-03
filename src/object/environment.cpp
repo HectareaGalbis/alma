@@ -152,6 +152,11 @@ Environment::Environment(const Environment& other)
         this->layers.emplace_back(*this, layer);
 }
 
+std::string Environment::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<environment>";
+}
+
 bool Environment::has_symbol_property(ObjectRef<Symbol> symbol, ObjectRef<Symbol> property) const
 {
     size_t len = this->layers.size();

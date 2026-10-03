@@ -2,8 +2,11 @@
 #pragma once
 
 #include "gc/gc.hpp"
+#include "object/cons.hpp"
+#include "object/nil.hpp"
 #include "object/object.hpp"
 #include <filesystem>
+#include <vector>
 
 class Environment;
 class Package;
@@ -14,11 +17,13 @@ class Object;
 class Alma {
     friend class Object;
 
+public:
 private:
     GarbageCollector gc;
     ObjectRef<Environment> environment;
     ObjectRef<Package> alma_package;
     ObjectRef<Package> current_package;
+    ObjectRef<Nil> nil;
 
 private:
     static Alma* global_alma;
@@ -34,9 +39,13 @@ private:
     void intern_functions();
     void intern_symbols();
 
-public:
+private:
     Alma();
 
+public:
+    static Alma alma;
+
+public:
     /** Allocates an object */
     template <typename T, typename... AS>
     ObjectRef<T> make(AS&&... as);

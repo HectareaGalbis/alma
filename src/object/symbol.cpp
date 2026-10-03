@@ -21,9 +21,8 @@
 //     nil_sym->values = { std::make_shared<Nil>() };
 // }
 
-Symbol::Symbol(Alma& _alma, const std::string& _name)
-    : Object(_alma)
-    , name(_name)
+Symbol::Symbol(const std::string& _name)
+    : name(_name)
 {
 }
 
@@ -38,7 +37,7 @@ ObjectRef<Object> Symbol::eval(ObjectRef<Object> self, ObjectRef<Environment> en
     }
 }
 
-std::string Symbol::to_string()
+std::string Symbol::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return this->name;
 }

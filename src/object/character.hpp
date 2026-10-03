@@ -8,8 +8,8 @@ private:
     char c;
 
 public:
-    Character(Alma& alma, char c);
+    Character(char c);
 
-    virtual std::string to_string() override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
+    virtual std::string to_string(ObjectRef<Object> self) override;
+    // virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };

@@ -65,6 +65,8 @@ public:
     Environment(Alma& alma);
     Environment(const Environment& other);
 
+    virtual std::string to_string(ObjectRef<Object> self) override;
+
     bool has_symbol_property(ObjectRef<Symbol> symbol, ObjectRef<Symbol> property) const;
     void insert_or_set_value(
         ObjectRef<Symbol> symbol, ObjectRef<Symbol> property, ObjectRef<Object> value);

@@ -9,6 +9,11 @@ Package::Package(Alma& _alma)
 {
 }
 
+std::string Package::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<package>";
+}
+
 ObjectRef<Object> Package::find_symbol(const std::string& name)
 {
     if (this->symbols.contains(name)) {

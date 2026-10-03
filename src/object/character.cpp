@@ -2,13 +2,12 @@
 #include "character.hpp"
 #include "alma.hpp"
 
-Character::Character(Alma& _alma, char _c)
-    : Object(_alma)
-    , c(_c)
+Character::Character(char _c)
+    : c(_c)
 {
 }
 
-std::string Character::to_string()
+std::string Character::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     std::string str = ".";
     switch (this->c) {

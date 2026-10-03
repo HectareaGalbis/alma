@@ -44,6 +44,7 @@ Alma::Alma()
     , environment(*this, gc.make_object<Environment>(*this))
     , alma_package(*this, gc.make_object<Package>(*this))
     , current_package(alma_package)
+    , nil(gc.make_object<Nil>())
 {
     this->intern_symbols();
     this->intern_functions();
@@ -130,7 +131,7 @@ ObjectRef<Package> Alma::get_current_package()
 
 std::string Alma::to_string(ObjectRef<Object> obj)
 {
-    return obj->to_string();
+    return obj->to_string(obj);
 }
 
 bool Alma::typep(ObjectRef<Object> obj, ObjectRef<Object> sym)

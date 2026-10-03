@@ -4,9 +4,6 @@
 #include "gc/gc.hpp"
 #include <string>
 
-namespace ALMA::core {
-
-class Alma;
 class Object;
 template <typename T>
 class ObjectTrackedRef;
@@ -61,8 +58,7 @@ concept ObjectRefRelatedType
 //         const std::vector<ObjectRef<Object>>& arg_list,
 //         ObjectRef<Environment> enviroment);
 //     virtual std::string to_string();
-//     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type);
-//     operator bool();
+//     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type);//     operator bool();
 // };
 
 class Object : public GCObject {
@@ -70,12 +66,13 @@ class Object : public GCObject {
     friend class ObjectRef;
 
 private:
-    static void protect_object(Alma& alma, GCObject** object);
-    static void unprotect_object(Alma& alma, GCObject** object);
+    static void protect_object(GCObject** object);
+    static void unprotect_object(GCObject** object);
 
 public:
-    virtual ObjectRef<Object> eval(ObjectRef<Object> self);
-    virtual bool is_true();
+    virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<class Environment> environment);
+    virtual std::string to_string(ObjectRef<Object> self);
+    virtual operator bool();
 };
 
 // -----------------------------------------------------------------------------
@@ -102,15 +99,12 @@ private:
     GCObject* obj;
 
 protected:
-    Alma& alma;
-
-protected:
     ObjectWeakRef(const ObjectWeakRef& other);
     ObjectWeakRef(ObjectWeakRef&& other);
     template <ObjectRefRelatedType<T> S>
     ObjectWeakRef(S&& other);
     template <Related<T> S>
-    ObjectWeakRef(Alma& alma, S* obj);
+    ObjectWeakRef(S* obj);
     ObjectWeakRef(std::nullptr_t) = delete;
 
     ObjectWeakRef& operator=(const ObjectWeakRef& other);
@@ -143,14 +137,12 @@ public:
 template <typename T>
 ObjectWeakRef<T>::ObjectWeakRef(const ObjectWeakRef& other)
     : obj(other.obj)
-    , alma(other.alma)
 {
 }
 
 template <typename T>
 ObjectWeakRef<T>::ObjectWeakRef(ObjectWeakRef&& other)
     : obj(other.obj)
-    , alma(other.alma)
 {
 }
 
@@ -158,15 +150,13 @@ template <typename T>
 template <ObjectRefRelatedType<T> S>
 ObjectWeakRef<T>::ObjectWeakRef(S&& other)
     : obj(other.obj)
-    , alma(other.alma)
 {
 }
 
 template <typename T>
 template <Related<T> S>
-ObjectWeakRef<T>::ObjectWeakRef(Alma& _alma, S* _obj)
+ObjectWeakRef<T>::ObjectWeakRef(S* _obj)
     : obj(_obj)
-    , alma(_alma)
 {
 }
 
@@ -204,7 +194,7 @@ template <typename T>
 template <Related<T> S>
 ObjectWeakRef<S> ObjectWeakRef<T>::as() const
 {
-    return ObjectWeakRef<S>(this->alma, static_cast<S*>(this->obj));
+    return ObjectWeakRef<S>(static_cast<S*>(this->obj));
 }
 
 template <typename T>
@@ -287,7 +277,7 @@ public:
     template <ObjectRefRelatedType<T> S>
     ObjectTrackedKeyRef(Object& owner, S&& other);
     template <Related<T> S>
-    ObjectTrackedKeyRef(Object& owner, Alma& alma, S* obj);
+    ObjectTrackedKeyRef(Object& owner, S* obj);
     ObjectTrackedKeyRef(std::nullptr_t) = delete;
 
     ~ObjectTrackedKeyRef();
@@ -306,7 +296,7 @@ public:
 
 template <typename T>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(const ObjectTrackedKeyRef& other)
-    : ObjectWeakRef<T>(other.alma, other.obj)
+    : ObjectWeakRef<T>(other.obj)
     , owner(other.owner)
 {
     this->owner.track_reference(&this->obj);
@@ -314,7 +304,7 @@ ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(const ObjectTrackedKeyRef& other)
 
 template <typename T>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(ObjectTrackedKeyRef&& other)
-    : ObjectWeakRef<T>(other.alma, other.obj)
+    : ObjectWeakRef<T>(other.obj)
     , owner(other.owner)
 {
     this->owner.track_reference(&this->obj);
@@ -323,7 +313,7 @@ ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(ObjectTrackedKeyRef&& other)
 template <typename T>
 template <Related<T> S>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, const ObjectTrackedKeyRef<S>& other)
-    : ObjectWeakRef<T>(other.alma, other.obj)
+    : ObjectWeakRef<T>(other.obj)
     , owner(_owner)
 {
     this->owner.track_reference(&this->obj);
@@ -332,7 +322,7 @@ ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, const ObjectTrackedK
 template <typename T>
 template <Related<T> S>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, ObjectTrackedKeyRef<S>&& other)
-    : ObjectWeakRef<T>(other.alma, other.obj)
+    : ObjectWeakRef<T>(other.obj)
     , owner(_owner)
 {
     this->owner.track_reference(&this->obj);
@@ -350,8 +340,8 @@ ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, S&& other)
 
 template <typename T>
 template <Related<T> S>
-ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, Alma& _alma, S* _obj)
-    : ObjectWeakRef<T>(_alma, _obj)
+ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, S* _obj)
+    : ObjectWeakRef<T>(_obj)
     , owner(_owner)
 {
     this->owner.track_reference(&this->obj);
@@ -394,13 +384,6 @@ ObjectTrackedKeyRef<T>& ObjectTrackedKeyRef<T>::operator=(S* _obj)
     return *this;
 }
 
-template <typename S>
-std::ostream& operator<<(std::ostream& out, const ObjectTrackedKeyRef<S>& obj)
-{
-    out << obj.alma.to_string(obj);
-    return out;
-}
-
 // --------------------------------------------------------------------------------
 
 template <typename T>
@@ -422,7 +405,7 @@ public:
     template <ObjectRefRelatedType<T> S>
     ObjectTrackedRef(Object& owner, S&& other);
     template <Related<T> S>
-    ObjectTrackedRef(Object& owner, Alma& alma, S* obj);
+    ObjectTrackedRef(Object& owner, S* obj);
     ObjectTrackedRef(std::nullptr_t) = delete;
 
     ObjectTrackedRef& operator=(const ObjectTrackedRef& other);
@@ -446,8 +429,8 @@ ObjectTrackedRef<T>::ObjectTrackedRef(Object& _owner, S&& other)
 
 template <typename T>
 template <Related<T> S>
-ObjectTrackedRef<T>::ObjectTrackedRef(Object& _owner, Alma& _alma, S* _obj)
-    : ObjectTrackedKeyRef<T>(_owner, _alma, _obj)
+ObjectTrackedRef<T>::ObjectTrackedRef(Object& _owner, S* _obj)
+    : ObjectTrackedKeyRef<T>(_owner, _obj)
 {
 }
 
@@ -481,13 +464,6 @@ ObjectTrackedRef<T>& ObjectTrackedRef<T>::operator=(S* _obj)
     return *this;
 }
 
-template <typename S>
-std::ostream& operator<<(std::ostream& out, const ObjectTrackedRef<S>& obj)
-{
-    out << obj.alma.to_string(obj);
-    return out;
-}
-
 // -----------------------------------------------------------------------------
 
 template <typename T>
@@ -511,7 +487,7 @@ public:
     template <ObjectRefRelatedType<T> S>
     ObjectRef(S&& other);
     template <Related<T> S>
-    ObjectRef(Alma& alma, S* obj);
+    ObjectRef(S* obj);
     ObjectRef(std::nullptr_t) = delete;
 
     ~ObjectRef();
@@ -552,16 +528,16 @@ ObjectRef<T>::ObjectRef(S&& other)
 
 template <typename T>
 template <Related<T> S>
-ObjectRef<T>::ObjectRef(Alma& _alma, S* _obj)
-    : ObjectWeakRef<T>(_alma, _obj)
+ObjectRef<T>::ObjectRef(S* _obj)
+    : ObjectWeakRef<T>(_obj)
 {
-    Object::protect_object(this->alma, &this->obj);
+    Object::protect_object(&this->obj);
 }
 
 template <typename T>
 ObjectRef<T>::~ObjectRef()
 {
-    Object::unprotect_object(this->alma, &this->obj);
+    Object::unprotect_object(&this->obj);
 }
 
 template <typename T>
@@ -597,7 +573,26 @@ ObjectRef<T>& ObjectRef<T>::operator=(S* _obj)
 template <typename S>
 std::ostream& operator<<(std::ostream& out, const ObjectRef<S>& obj)
 {
-    out << obj.alma.to_string(obj);
+    ObjectRef<Object> self(obj);
+    out << self->to_string(self);
+    return out;
+}
+
+// Defined here because they need the complete definition of ObjectRef
+
+template <typename S>
+std::ostream& operator<<(std::ostream& out, const ObjectTrackedKeyRef<S>& obj)
+{
+    ObjectRef<Object> self(obj);
+    out << self->to_string(self);
+    return out;
+}
+
+template <typename S>
+std::ostream& operator<<(std::ostream& out, const ObjectTrackedRef<S>& obj)
+{
+    ObjectRef<Object> self(obj);
+    out << self->to_string(self);
     return out;
 }
 
@@ -648,5 +643,3 @@ struct ObjectRefEqual {
         return obj1.obj == obj2.obj;
     }
 };
-
-}

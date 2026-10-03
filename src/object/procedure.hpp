@@ -28,6 +28,8 @@ protected:
 public:
     Procedure(Alma& alma);
 
+    virtual std::string to_string(ObjectRef<Object> self) override;
+
     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
@@ -40,6 +42,7 @@ public:
 class Function : public Procedure {
 public:
     Function(Alma& alma);
+    virtual std::string to_string(ObjectRef<Object> self) override;
     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
@@ -52,6 +55,7 @@ public:
 class Macro : public Procedure {
 public:
     Macro(Alma& alma);
+    virtual std::string to_string(ObjectRef<Object> self) override;
     virtual ObjectRef<Object> transform(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -85,6 +89,7 @@ public:
         ObjectRef<Environment> closure,
         const std::vector<ObjectRef<Object>>& body);
 
+    virtual std::string to_string(ObjectRef<Object> self) override;
     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };
 
@@ -110,6 +115,7 @@ public:
         ObjectRef<Environment> closure,
         const std::vector<ObjectRef<Object>>& body);
 
+    virtual std::string to_string(ObjectRef<Object> self) override;
     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };
 

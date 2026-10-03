@@ -1,8 +1,9 @@
 
 #pragma once
 
+#include "environment.hpp"
 #include "object.hpp"
-#include <optional>
+#include <vector>
 
 class Cons : public Object {
 private:
@@ -20,7 +21,7 @@ public:
         override;
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
-    virtual std::string to_string() override;
+    virtual std::string to_string(ObjectRef<Object> self) override;
     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 
     ObjectRef<Object> get_car();

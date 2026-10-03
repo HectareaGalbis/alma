@@ -1,9 +1,10 @@
 
 #pragma once
 
+#include "environment.hpp"
 #include "object.hpp"
-#include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class Package;
@@ -16,11 +17,11 @@ private:
         properties;
 
 public:
-    Symbol(Alma& alma, const std::string& name);
+    Symbol(const std::string& name);
 
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
-    virtual std::string to_string() override;
+    virtual std::string to_string(ObjectRef<Object> self) override;
     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 
     std::string& get_name();

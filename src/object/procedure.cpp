@@ -45,6 +45,11 @@ Procedure::Procedure(Alma& _alma)
 {
 }
 
+std::string Procedure::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<procedure>";
+}
+
 bool Procedure::typep(ObjectRef<Object> self, ObjectRef<Object> type)
 {
     return type == this->alma.intern_alma_symbol("procedure") || this->Object::typep(self, type);
@@ -63,6 +68,11 @@ ObjectRef<Object> Procedure::apply(
 Function::Function(Alma& _alma)
     : Procedure(_alma)
 {
+}
+
+std::string Function::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<function>";
 }
 
 ObjectRef<Object> Function::apply(
@@ -87,6 +97,11 @@ bool Function::typep(ObjectRef<Object> self, ObjectRef<Object> type)
 Macro::Macro(Alma& _alma)
     : Procedure(_alma)
 {
+}
+
+std::string Macro::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<macro>";
 }
 
 ObjectRef<Object> Macro::transform(
@@ -164,6 +179,11 @@ ObjectRef<Object> FunctionUser::eval_body(
     }
 }
 
+std::string FunctionUser::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<function-user>";
+}
+
 bool FunctionUser::typep(ObjectRef<Object> self, ObjectRef<Object> type)
 {
     return type == alma.intern_alma_symbol("function-user") || this->Function::typep(self, type);
@@ -221,6 +241,11 @@ ObjectRef<Object> MacroUser::eval_body(
             alma.eval(this->body[i], this->closure);
         return alma.eval(this->body.back(), this->closure);
     }
+}
+
+std::string MacroUser::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<macro-user>";
 }
 
 bool MacroUser::typep(ObjectRef<Object> self, ObjectRef<Object> type)

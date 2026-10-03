@@ -7,29 +7,14 @@
 #include <iostream>
 #include <optional>
 
-void Object::protect_object(Alma& alma, GCObject** object)
+void Object::protect_object(GCObject** object)
 {
-    alma.gc.track_root_object(object);
+    Alma::alma.gc.track_root_object(object);
 }
 
-void Object::unprotect_object(Alma& alma, GCObject** object)
+void Object::unprotect_object(GCObject** object)
 {
-    alma.gc.untrack_root_object(object);
-}
-
-Object::Object(Alma& _alma)
-    : alma(_alma)
-{
-}
-
-Object::Object(const Object& other)
-    : alma(other.alma)
-{
-}
-
-Object::Object(const Object&& other)
-    : alma(other.alma)
-{
+    Alma::alma.gc.untrack_root_object(object);
 }
 
 ObjectRef<Object> Object::expand(ObjectRef<Object> self, ObjectRef<Environment> enviroment [[maybe_unused]])
@@ -42,7 +27,7 @@ ObjectRef<Object> Object::transform(
     const std::vector<ObjectRef<Object>>& arg_list [[maybe_unused]],
     ObjectRef<Environment> enviroment [[maybe_unused]])
 {
-    athrow("The object " << this->to_string() << " is not transformable");
+    athrow("The object " << this->to_string(self) << " is not transformable");
 }
 
 ObjectRef<Object> Object::eval(
@@ -56,10 +41,10 @@ ObjectRef<Object> Object::apply(
     const std::vector<ObjectRef<Object>>& arg_list [[maybe_unused]],
     ObjectRef<Environment> enviroment [[maybe_unused]])
 {
-    athrow("The object " << this->to_string() << " is not applicable");
+    athrow("The object " << this->to_string(self) << " is not applicable");
 }
 
-std::string Object::to_string()
+std::string Object::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<object>";
 }

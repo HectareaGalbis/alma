@@ -21,7 +21,7 @@ ObjectRef<Object> CharacterMacro::eval(ObjectRef<Object> self, ObjectRef<Environ
     return this->alma.eval(this->expand(self, enviroment));
 }
 
-std::string CharacterMacro::to_string()
+std::string CharacterMacro::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<character-macro>";
 }
