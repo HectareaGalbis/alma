@@ -29,8 +29,3 @@ std::string Character::to_string(ObjectRef<Object> self [[maybe_unused]])
 
     return str;
 }
-
-bool Character::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("character") || this->Object::typep(self, type);
-}

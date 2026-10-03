@@ -49,11 +49,6 @@ std::string Object::to_string(ObjectRef<Object> self [[maybe_unused]])
     return "<object>";
 }
 
-bool Object::typep(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("t");
-}
-
 Object::operator bool()
 {
     return this != this->alma.intern_alma_symbol("nil").get();

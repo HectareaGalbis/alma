@@ -50,11 +50,6 @@ std::string Procedure::to_string(ObjectRef<Object> self [[maybe_unused]])
     return "<procedure>";
 }
 
-bool Procedure::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("procedure") || this->Object::typep(self, type);
-}
-
 ObjectRef<Object> Procedure::apply(
     ObjectRef<Object> self [[maybe_unused]],
     const std::vector<ObjectRef<Object>>& arg_list,
@@ -87,11 +82,6 @@ ObjectRef<Object> Function::apply(
     return this->eval_body(eval_arg_list, enviroment);
 }
 
-bool Function::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("function") || this->Procedure::typep(self, type);
-}
-
 // -----------------------------------------------------------------------------
 
 Macro::Macro(Alma& _alma)
@@ -118,11 +108,6 @@ ObjectRef<Object> Macro::apply(
     ObjectRef<Environment> enviroment)
 {
     return this->alma.eval(this->transform(self, arg_list, enviroment));
-}
-
-bool Macro::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("macro") || this->Procedure::typep(self, type);
 }
 
 // -----------------------------------------------------------------------------
@@ -184,11 +169,6 @@ std::string FunctionUser::to_string(ObjectRef<Object> self [[maybe_unused]])
     return "<function-user>";
 }
 
-bool FunctionUser::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == alma.intern_alma_symbol("function-user") || this->Function::typep(self, type);
-}
-
 // -----------------------------------------------------------------------------
 
 MacroUser::MacroUser(
@@ -246,11 +226,6 @@ ObjectRef<Object> MacroUser::eval_body(
 std::string MacroUser::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<macro-user>";
-}
-
-bool MacroUser::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return alma.eq(type, alma.intern_alma_symbol("macro-user")) || this->Procedure::typep(self, type);
 }
 
 // -----------------------------------------------------------------------------

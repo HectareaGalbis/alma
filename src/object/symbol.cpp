@@ -42,11 +42,6 @@ std::string Symbol::to_string(ObjectRef<Object> self [[maybe_unused]])
     return this->name;
 }
 
-bool Symbol::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("symbol") || this->Object::typep(self, type);
-}
-
 std::string& Symbol::get_name()
 {
     return this->name;

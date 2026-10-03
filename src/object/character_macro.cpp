@@ -25,8 +25,3 @@ std::string CharacterMacro::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<character-macro>";
 }
-
-bool CharacterMacro::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("character-macro") || this->Object::typep(self, type);
-}

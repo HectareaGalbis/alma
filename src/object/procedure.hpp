@@ -30,7 +30,6 @@ public:
 
     virtual std::string to_string(ObjectRef<Object> self) override;
 
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -43,7 +42,6 @@ class Function : public Procedure {
 public:
     Function(Alma& alma);
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -64,7 +62,6 @@ public:
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
         ObjectRef<Environment> enviroment) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };
 
 // -----------------------------------------------------------------------------
@@ -90,7 +87,6 @@ public:
         const std::vector<ObjectRef<Object>>& body);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };
 
 // -----------------------------------------------------------------------------
@@ -116,7 +112,6 @@ public:
         const std::vector<ObjectRef<Object>>& body);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };
 
 // -----------------------------------------------------------------------------

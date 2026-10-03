@@ -28,8 +28,3 @@ std::string String::to_string(ObjectRef<Object> self [[maybe_unused]])
     ss.push_back('"');
     return ss;
 }
-
-bool String::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("string") || this->Object::typep(self, type);
-}

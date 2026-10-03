@@ -12,5 +12,4 @@ public:
     String(Alma& alma, const std::string& content);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 };

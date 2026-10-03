@@ -15,7 +15,6 @@ private:
 public:
     Package(Alma& alma);
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 
     // Symbols
     std::optional<ObjectRef<Object>> find_symbol(const std::string& name);

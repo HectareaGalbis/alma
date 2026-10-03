@@ -22,7 +22,6 @@ public:
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type) override;
 
     ObjectRef<Object> get_car();
     ObjectRef<Object> get_cdr();

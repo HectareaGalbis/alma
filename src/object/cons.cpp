@@ -100,11 +100,6 @@ std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])
     return s.str();
 }
 
-bool Cons::typep(ObjectRef<Object> self, ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("cons") || this->Object::typep(self, type);
-}
-
 ObjectRef<Object> Cons::get_car()
 {
     return this->car;

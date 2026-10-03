@@ -30,11 +30,6 @@ ObjectRef<Symbol> Package::intern_symbol(const std::string& name)
     return this->symbols.at(name);
 }
 
-bool Package::typep(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Object> type)
-{
-    return type == this->alma.intern_alma_symbol("package") || this->Object::typep(self, type);
-}
-
 std::optional<ObjectRef<Procedure>> Package::find_character_macro(char c)
 {
     if (this->character_macros.contains(c))
