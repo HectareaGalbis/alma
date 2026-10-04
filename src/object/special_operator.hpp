@@ -1,14 +1,18 @@
 
 #pragma once
 
+#include "cons.hpp"
 #include "procedure.hpp"
 
 void intern_special_operators();
 
-#define declare_special_operator(name)                                                   \
-    class name : public Procedure {                                                      \
-    public:                                                                              \
-        virtual ObjectRef<Object> apply(ObjectRef<Cons> arguments, Alma& alma) override; \
+#define declare_special_operator(name)                          \
+    class name : public Procedure {                             \
+    public:                                                     \
+        virtual ObjectRef<Object> apply(                        \
+            ObjectRef<Object> self,                             \
+            const std::vector<ObjectRef<Object>>& arg_list,     \
+            ObjectRef<class Environment> environment) override; \
     }
 
 declare_special_operator(progn);

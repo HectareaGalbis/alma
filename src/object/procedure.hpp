@@ -54,10 +54,10 @@ class Macro : public Procedure {
 public:
     Macro();
     virtual std::string to_string(ObjectRef<Object> self) override;
-    // virtual ObjectRef<Object> transform(
-    //     ObjectRef<Object> self,
-    //     const std::vector<ObjectRef<Object>>& arg_list,
-    //     ObjectRef<Environment> enviroment) override;
+    virtual ObjectRef<Object> transform(
+        ObjectRef<Object> self,
+        const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> enviroment) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,

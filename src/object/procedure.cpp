@@ -149,14 +149,14 @@ ObjectRef<Object> FunctionUser::eval_body(
 
         for (size_t i = 0; i < this->param_list.size(); i++)
             this->closure->insert_or_set_value(
-                this->param_list[i], alma.intern_alma_symbol("value"), arg_list[i]);
+                this->param_list[i], Alma::alma.intern_alma_symbol("value"), arg_list[i]);
         if (this->param_rest)
             this->closure->insert_or_set_value(
-                *this->param_rest, alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
+                *this->param_rest, Alma::alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
 
         for (size_t i = 0; i < this->body.size() - 1; i++)
-            alma.eval(this->body[i], this->closure);
-        return alma.eval(this->body.back(), this->closure);
+            Alma::alma.eval(this->body[i], this->closure);
+        return Alma::alma.eval(this->body.back(), this->closure);
     }
 }
 
@@ -207,14 +207,14 @@ ObjectRef<Object> MacroUser::eval_body(
 
         for (size_t i = 0; i < this->param_list.size(); i++)
             this->closure->insert_or_set_value(
-                this->param_list[i], alma.intern_alma_symbol("value"), arg_list[i]);
+                this->param_list[i], Alma::alma.intern_alma_symbol("value"), arg_list[i]);
         if (this->param_rest)
             this->closure->insert_or_set_value(
-                *this->param_rest, alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
+                *this->param_rest, Alma::alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
 
         for (size_t i = 0; i < this->body.size() - 1; i++)
-            alma.eval(this->body[i], this->closure);
-        return alma.eval(this->body.back(), this->closure);
+            Alma::alma.eval(this->body[i], this->closure);
+        return Alma::alma.eval(this->body.back(), this->closure);
     }
 }
 

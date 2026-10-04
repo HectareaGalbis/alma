@@ -1,13 +1,13 @@
 
 #pragma once
 
-#include "environment.hpp"
 #include "object.hpp"
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 class Package;
+class Environment;
 
 class Symbol : public Object {
 private:

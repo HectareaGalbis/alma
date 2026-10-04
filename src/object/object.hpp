@@ -73,6 +73,8 @@ private:
 public:
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<class Environment> environment);
     virtual ObjectRef<Object> expand(ObjectRef<Object> self, ObjectRef<class Environment> environment);
+    virtual ObjectRef<Object> transform(ObjectRef<Object> self,
+        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment);
     virtual ObjectRef<Object> apply(ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment);
     virtual std::string to_string(ObjectRef<Object> self);
@@ -519,7 +521,7 @@ template <typename T>
 ObjectRef<T>::ObjectRef(ObjectRef&& other)
     : ObjectWeakRef<T>(other)
 {
-    Object::protect_object(this->alma, &this->obj);
+    Object::protect_object(&this->obj);
 }
 
 template <typename T>

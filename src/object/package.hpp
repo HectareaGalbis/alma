@@ -4,6 +4,7 @@
 #include "object.hpp"
 #include "symbol.hpp"
 #include <map>
+#include <optional>
 
 class Procedure;
 

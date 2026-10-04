@@ -9,21 +9,21 @@
 #include <memory>
 
 template <typename T>
-void intern_special_operator(const std::string& name, Alma& alma)
+void intern_special_operator(const std::string& name)
 {
-    ObjectRef<Symbol> sym = alma.alma_package->intern_symbol(name, alma);
-    sym->set_function(alma.gc.make_object<T>());
+    ObjectRef<Symbol> sym = Alma::alma.intern_alma_symbol(name);
+    sym->set_value(Alma::alma.make<T>());
 }
 
-void intern_special_operators(Alma& alma)
+void intern_special_operators()
 {
-    intern_special_operator<progn>("progn", alma);
-    intern_special_operator<let>("let", alma);
-    intern_special_operator<quote>("quote", alma);
-    intern_special_operator<lambda>("lambda", alma);
-    intern_special_operator<gamma>("gamma", alma);
-    intern_special_operator<branch>("if", alma);
-    intern_special_operator<quasiquote>("quasiquote", alma);
+    intern_special_operator<progn>("progn");
+    intern_special_operator<let>("let");
+    intern_special_operator<quote>("quote");
+    intern_special_operator<lambda>("lambda");
+    intern_special_operator<gamma>("gamma");
+    intern_special_operator<branch>("if");
+    intern_special_operator<quasiquote>("quasiquote");
 }
 
 // --------------------------------------------------------------------------------
