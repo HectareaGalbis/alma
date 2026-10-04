@@ -1,12 +1,15 @@
 
-#include "special_operator.hpp"
 #include "alma.hpp"
+#include "special_operator.hpp"
 #include "cons.hpp"
 #include "debug.hpp"
+#include "environment.hpp"
+#include "nil.hpp"
 #include "object.hpp"
 #include "package.hpp"
 #include "symbol.hpp"
-#include <memory>
+#include <optional>
+#include <utility>
 
 template <typename T>
 void intern_special_operator(const std::string& name)
@@ -28,32 +31,31 @@ void intern_special_operators()
 
 // --------------------------------------------------------------------------------
 
-ObjectRef<Object> progn::apply(ObjectRef<Cons> arguments, Alma& alma)
+ObjectRef<Object> progn::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
 {
-    if (arguments.empty()) {
-        return alma.boolean(false);
+    if (arg_list.empty()) {
+        return Alma::alma.boolean(false);
     }
-    for (size_t i = 0; i < arguments.size() - 1; i++) {
-        alma.eval(arguments[i]);
+    for (size_t i = 0; i < arg_list.size() - 1; i++) {
+        Alma::alma.eval(arg_list[i], environment);
     }
-    return alma.eval(arguments.back());
+    return Alma::alma.eval(arg_list.back(), environment);
 }
 
 // --------------------------------------------------------------------------------
 
 static std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>> parseBindings(
-    ObjectRef<Cons> bindings, Alma& alma)
+    ObjectRef<Object> bindings)
 {
     std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>> parsedBindings;
 
-    for (ObjectRef<Object> element : bindings->toList()) {
-        if (!alma.consp(element))
-            throw std::runtime_error("Expected a binding clause (a list).");
-        std::vector<ObjectRef<Object>> bindingList = element.as<Cons>()->toList();
-        if (bindingList.size() != 2)
-            throw std::runtime_error("The binding clause must have 2 elements.");
-        if (!alma.symbolp(bindingList[0]))
-            throw std::runtime_error("The first element of the binding clause must be a symbol");
+    for (ObjectRef<Object> element : bindings.as<Cons>()->to_list().first) {
+        massert(Alma::alma.consp(element), "Expected a binding clause (a list).");
+        std::vector<ObjectRef<Object>> bindingList = element.as<Cons>()->to_list().first;
+        massert(bindingList.size() == 2, "The binding clause must have 2 elements.");
+        massert(Alma::alma.symbolp(bindingList[0]),
+            "The first element of the binding clause must be a symbol");
         parsedBindings.emplace_back(bindingList[0], bindingList[1]);
     }
 
@@ -61,201 +63,188 @@ static std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>> parseBinding
 }
 
 static std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>> evaluateBindings(
-    const std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>>& bindings, Alma& alma)
+    const std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>>& bindings,
+    ObjectRef<Environment> environment)
 {
     std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>> evaluatedBindings;
 
     for (const auto& [var, value] : bindings) {
-        evaluatedBindings.emplace_back(var, alma.eval(value));
+        evaluatedBindings.emplace_back(var, Alma::alma.eval(value, environment));
     }
 
     return evaluatedBindings;
 }
 
-ObjectRef<Object> let::apply(const std::vector<ObjectRef<Object>>& arguments, Alma& alma)
+ObjectRef<Object> let::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
 {
-    massert(!arguments.empty(), "let needs at least a list");
+    massert(!arg_list.empty(), "let needs at least a list");
 
-    massert(alma.consp(arguments.front()), "Expected a list");
+    massert(Alma::alma.consp(arg_list.front()), "Expected a list");
 
-    auto parsedBindings = parseBindings(bindings, alma);
-    auto evaluatedBindings = evaluateBindings(lex_env, parsedBindings);
+    if (arg_list.size() == 1)
+        return Alma::alma.make<Nil>();
 
-    if (arguments.size() == 1)
-        return std::make_shared<Nil>();
+    std::vector<std::pair<ObjectRef<Symbol>, ObjectRef<Object>>> evaluatedBindings
+        = evaluateBindings(parseBindings(arg_list.front()), environment);
 
-    lex_env.pushValues(evaluatedBindings.begin(), evaluatedBindings.end());
+    ObjectRef<Symbol> value_property = Alma::alma.intern_alma_symbol("value");
 
-    for (size_t i = 1; i < arguments.size() - 1; i++)
-        Object::eval(arguments[i], lex_env);
+    {
+        Environment::WithLayer layer(*environment);
 
-    std::shared_ptr<Object> result = Object::eval(arguments.back(), lex_env);
+        for (const auto& [var, value] : evaluatedBindings)
+            environment->insert_or_set_value(var, value_property, value);
 
-    lex_env.popValues();
+        for (size_t i = 1; i < arg_list.size() - 1; i++)
+            Alma::alma.eval(arg_list[i], environment);
 
-    return result;
+        return Alma::alma.eval(arg_list.back(), environment);
+    }
 }
 
 // --------------------------------------------------------------------------------
 
-std::shared_ptr<Object> quote::apply(
-    Environment& lex_env [[maybe_unused]],
-    const std::vector<std::shared_ptr<Object>>& arguments)
+ObjectRef<Object> quote::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
 {
-    if (arguments.size() != 1)
-        throw std::runtime_error("Expected only one argument.");
-    return arguments[0];
+    massert(arg_list.size() == 1, "Expected only one argument.");
+    return arg_list[0];
 }
 
 // --------------------------------------------------------------------------------
 
-static std::vector<std::shared_ptr<Object>> expand_quotation(const std::shared_ptr<Symbol>& sym,
-    const std::vector<std::shared_ptr<Object>>& elements)
+static std::vector<ObjectRef<Object>> expand_quotation(ObjectRef<Symbol> sym,
+    const std::vector<ObjectRef<Object>>& elements)
 {
-    std::vector<std::shared_ptr<Object>> new_elements;
-    for (const std::shared_ptr<Object>& element : elements) {
-        new_elements.push_back(std::make_shared<Cons>(std::vector<std::shared_ptr<Object>> { sym, element }));
+    std::vector<ObjectRef<Object>> new_elements;
+    for (const ObjectRef<Object>& element : elements) {
+        new_elements.push_back(
+            Alma::alma.make<Cons>(std::vector<ObjectRef<Object>> { sym, element }));
     }
     return new_elements;
 }
 
-static std::vector<std::shared_ptr<Object>> eval_quasiquote(const std::shared_ptr<Object>& obj,
-    size_t quasi_level, Environment& lex_env)
+static std::vector<ObjectRef<Object>> eval_quasiquote(ObjectRef<Object> obj,
+    size_t quasi_level, ObjectRef<Environment> environment)
 {
-    std::shared_ptr<Cons> cons = std::dynamic_pointer_cast<Cons>(obj);
-    if (!cons)
+    if (!Alma::alma.consp(obj))
         return { obj };
-    std::vector<std::shared_ptr<Object>> list = cons->toList();
-    std::shared_ptr<Symbol> sym = std::dynamic_pointer_cast<Symbol>(list[0]);
-    if (sym && sym->name == "quote") {
-        return expand_quotation(sym, eval_quasiquote(list[1], quasi_level, lex_env));
-    } else if (sym && sym->name == "quasiquote") {
-        return expand_quotation(sym, eval_quasiquote(list[1], quasi_level + 1, lex_env));
-    } else if (sym && sym->name == "unquote") {
+
+    std::vector<ObjectRef<Object>> list = obj.as<Cons>()->to_list().first;
+    massert(!list.empty(), "Expected a non empty list");
+
+    std::optional<ObjectRef<Symbol>> sym;
+    std::string name;
+    if (Alma::alma.symbolp(list[0])) {
+        sym = list[0];
+        name = (*sym)->get_name();
+    }
+
+    if (sym && name == "quote") {
+        return expand_quotation(*sym, eval_quasiquote(list[1], quasi_level, environment));
+    } else if (sym && name == "quasiquote") {
+        return expand_quotation(*sym, eval_quasiquote(list[1], quasi_level + 1, environment));
+    } else if (sym && name == "unquote") {
         if (quasi_level == 1)
-            return { Object::eval(list[1], lex_env) };
+            return { Alma::alma.eval(list[1], environment) };
         else {
-            return expand_quotation(sym, eval_quasiquote(list[1], quasi_level - 1, lex_env));
+            return expand_quotation(*sym, eval_quasiquote(list[1], quasi_level - 1, environment));
         }
-    } else if (sym && sym->name == "slice-unquote") {
+    } else if (sym && name == "slice-unquote") {
         if (quasi_level == 1) {
-            std::shared_ptr<Object> eval_obj = Object::eval(list[1], lex_env);
-            std::shared_ptr<Cons> eval_cons = std::dynamic_pointer_cast<Cons>(eval_obj);
-            if (!eval_cons) {
-                std::shared_ptr<Nil> nil_obj = std::dynamic_pointer_cast<Nil>(eval_obj);
-                if (!nil_obj)
-                    throw std::runtime_error("The result of slice-unquote must be a list.");
+            ObjectRef<Object> eval_obj = Alma::alma.eval(list[1], environment);
+            if (Alma::alma.null(eval_obj))
                 return {};
-            }
-            return eval_cons->toList();
+            massert(Alma::alma.consp(eval_obj), "The result of slice-unquote must be a list.");
+            return eval_obj.as<Cons>()->to_list().first;
         } else {
-            return expand_quotation(sym, eval_quasiquote(list[1], quasi_level - 1, lex_env));
+            return expand_quotation(*sym, eval_quasiquote(list[1], quasi_level - 1, environment));
         }
     } else {
-        std::vector<std::shared_ptr<Object>> result_list;
-        for (std::shared_ptr<Object>& elem : list) {
-            std::vector<std::shared_ptr<Object>> result_elem = eval_quasiquote(elem, quasi_level, lex_env);
+        std::vector<ObjectRef<Object>> result_list;
+        for (const ObjectRef<Object>& elem : list) {
+            std::vector<ObjectRef<Object>> result_elem
+                = eval_quasiquote(elem, quasi_level, environment);
             result_list.insert(result_list.end(), result_elem.begin(), result_elem.end());
         }
         if (result_list.empty())
-            return { std::make_shared<Nil>() };
+            return { Alma::alma.make<Nil>() };
         else
-            return { std::make_shared<Cons>(result_list) };
+            return { Alma::alma.make<Cons>(result_list) };
     }
 }
 
-std::shared_ptr<Object> quasiquote::apply(
-    Environment& lex_env,
-    const std::vector<std::shared_ptr<Object>>& arguments)
+ObjectRef<Object> quasiquote::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
 {
-    if (arguments.size() != 1)
-        throw std::runtime_error("Expected only one argument.");
+    massert(arg_list.size() == 1, "Expected only one argument.");
 
-    std::shared_ptr<Cons> list = std::dynamic_pointer_cast<Cons>(arguments[0]);
+    if (!Alma::alma.consp(arg_list[0]))
+        return arg_list[0];
 
-    if (!list)
-        return arguments[0];
-    else {
-        std::vector<std::shared_ptr<Object>> res = eval_quasiquote(arguments[0], 1, lex_env);
-        if (res.size() > 1)
-            throw std::runtime_error("Used slice-unquote at the top of quasiquote");
-        return res[0];
-    }
+    std::vector<ObjectRef<Object>> res = eval_quasiquote(arg_list[0], 1, environment);
+    massert(res.size() == 1, "Used slice-unquote at the top of quasiquote");
+    return res.front();
 }
 
 // --------------------------------------------------------------------------------
 
-std::shared_ptr<Object> lambda::apply(
-    Environment& lex_env,
-    const std::vector<std::shared_ptr<Object>>& arguments)
+ObjectRef<Object> lambda::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
 {
-    if (arguments.size() < 1)
-        throw std::runtime_error("Expected at least one argument.");
+    massert(arg_list.size() >= 1, "Expected at least one argument.");
 
-    std::vector<std::shared_ptr<Symbol>> func_arg_symbols;
-    std::shared_ptr<Nil> no_args = std::dynamic_pointer_cast<Nil>(arguments[0]);
-    if (!no_args) {
-        std::shared_ptr<Cons> func_args = std::dynamic_pointer_cast<Cons>(arguments[0]);
-        if (!func_args)
-            throw std::runtime_error("Expected a list of symbols.");
-        for (std::shared_ptr<Object>& func_arg : func_args->toList()) {
-            std::shared_ptr<Symbol> func_arg_symbol = std::dynamic_pointer_cast<Symbol>(func_arg);
-            if (!func_arg_symbol)
-                throw std::runtime_error("Expected a symbol as an argument.");
-            func_arg_symbols.push_back(func_arg_symbol);
-        }
+    std::vector<ObjectRef<Object>> param_list;
+    if (!Alma::alma.null(arg_list[0])) {
+        massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
+        param_list = arg_list[0].as<Cons>()->to_list().first;
+        for (const ObjectRef<Object>& param : param_list)
+            massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
     }
 
-    std::vector<std::shared_ptr<Object>> body;
-    for (size_t i = 1; i < arguments.size(); i++)
-        body.push_back(arguments[i]);
+    std::vector<ObjectRef<Object>> body;
+    for (size_t i = 1; i < arg_list.size(); i++)
+        body.push_back(arg_list[i]);
 
-    return std::make_shared<FunctionUser>("<lambda>", lex_env, func_arg_symbols, body);
+    return Alma::alma.make<FunctionUser>(param_list, std::nullopt, environment, body);
 }
 
 // --------------------------------------------------------------------------------
 
-std::shared_ptr<Object> gamma::apply(
-    Environment& lex_env,
-    const std::vector<std::shared_ptr<Object>>& arguments)
+ObjectRef<Object> gamma::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
 {
-    if (arguments.size() < 1)
-        throw std::runtime_error("Expected at least one argument.");
+    massert(arg_list.size() >= 1, "Expected at least one argument.");
 
-    std::shared_ptr<Cons> macro_args = std::dynamic_pointer_cast<Cons>(arguments[0]);
-    if (!macro_args)
-        throw std::runtime_error("Expected a list of symbols.");
+    massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
 
-    std::vector<std::shared_ptr<Symbol>> macro_arg_symbols;
-    for (std::shared_ptr<Object>& macro_arg : macro_args->toList()) {
-        std::shared_ptr<Symbol> macro_arg_symbol = std::dynamic_pointer_cast<Symbol>(macro_arg);
-        if (!macro_arg_symbol)
-            throw std::runtime_error("Expected a symbol as an argument.");
-        macro_arg_symbols.push_back(macro_arg_symbol);
-    }
+    std::vector<ObjectRef<Object>> param_list = arg_list[0].as<Cons>()->to_list().first;
+    for (const ObjectRef<Object>& param : param_list)
+        massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
 
-    std::vector<std::shared_ptr<Object>> body;
-    for (size_t i = 1; i < arguments.size(); i++)
-        body.push_back(arguments[i]);
+    std::vector<ObjectRef<Object>> body;
+    for (size_t i = 1; i < arg_list.size(); i++)
+        body.push_back(arg_list[i]);
 
-    return std::make_shared<MacroUser>("<lambda>", lex_env, macro_arg_symbols, body);
+    return Alma::alma.make<MacroUser>(param_list, std::nullopt, environment, body);
 }
 
 // --------------------------------------------------------------------------------
 
-std::shared_ptr<Object> branch::apply(
-    Environment& lex_env,
-    const std::vector<std::shared_ptr<Object>>& arguments)
+ObjectRef<Object> branch::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
 {
-    if (arguments.size() != 2 && arguments.size() != 3)
-        throw std::runtime_error("Expected at two or three arguments.");
+    massert(arg_list.size() == 2 || arg_list.size() == 3,
+        "Expected at two or three arguments.");
 
-    if (Object::is_true(Object::eval(arguments[0], lex_env))) {
-        return Object::eval(arguments[1], lex_env);
+    if (Alma::alma.truep(Alma::alma.eval(arg_list[0], environment))) {
+        return Alma::alma.eval(arg_list[1], environment);
     } else {
-        if (arguments.size() == 3)
-            return Object::eval(arguments[2], lex_env);
+        if (arg_list.size() == 3)
+            return Alma::alma.eval(arg_list[2], environment);
         else
-            return std::make_shared<Nil>();
+            return Alma::alma.make<Nil>();
     }
 }

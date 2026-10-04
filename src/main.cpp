@@ -28,10 +28,8 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    Alma alma;
-
     try {
-        alma.load(argv[1]);
+        Alma::alma.load(argv[1]);
     } catch (std::runtime_error& e) {
         std::cerr << e.what() << std::endl;
     }

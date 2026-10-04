@@ -1,12 +1,12 @@
 
 
 #include "alma.hpp"
-#include "cons.hpp"
 #include "debug.hpp"
-#include "environment.hpp"
-#include "function.hpp"
-#include "object.hpp"
-#include "package.hpp"
+#include "object/cons.hpp"
+#include "object/environment.hpp"
+#include "object/function.hpp"
+#include "object/object.hpp"
+#include "object/package.hpp"
 #include "reader.hpp"
 #include <fstream>
 

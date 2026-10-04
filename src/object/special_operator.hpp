@@ -9,8 +9,7 @@ void intern_special_operators();
 #define declare_special_operator(name)                          \
     class name : public Procedure {                             \
     public:                                                     \
-        virtual ObjectRef<Object> apply(                        \
-            ObjectRef<Object> self,                             \
+        virtual ObjectRef<Object> eval_body(                    \
             const std::vector<ObjectRef<Object>>& arg_list,     \
             ObjectRef<class Environment> environment) override; \
     }
