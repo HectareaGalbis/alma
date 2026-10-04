@@ -22,13 +22,13 @@ ObjectRef<Object> Object::expand(ObjectRef<Object> self, ObjectRef<Environment> 
     return self;
 }
 
-ObjectRef<Object> Object::transform(
-    ObjectRef<Object> self [[maybe_unused]],
-    const std::vector<ObjectRef<Object>>& arg_list [[maybe_unused]],
-    ObjectRef<Environment> enviroment [[maybe_unused]])
-{
-    athrow("The object " << this->to_string(self) << " is not transformable");
-}
+// ObjectRef<Object> Object::transform(
+//     ObjectRef<Object> self [[maybe_unused]],
+//     const std::vector<ObjectRef<Object>>& arg_list [[maybe_unused]],
+//     ObjectRef<Environment> enviroment [[maybe_unused]])
+// {
+//     athrow("The object " << this->to_string(self) << " is not transformable");
+// }
 
 ObjectRef<Object> Object::eval(
     ObjectRef<Object> self, ObjectRef<Environment> environment [[maybe_unused]])

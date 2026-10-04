@@ -2,9 +2,8 @@
 #include "integer.hpp"
 #include "alma.hpp"
 
-Integer::Integer(Alma& _alma, int64_t _value)
-    : Object(_alma)
-    , value(_value)
+Integer::Integer(int64_t _value)
+    : value(_value)
 {
 }
 

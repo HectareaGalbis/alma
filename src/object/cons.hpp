@@ -11,9 +11,9 @@ private:
     ObjectTrackedRef<Object> cdr;
 
 public:
-    Cons(Alma& alma, ObjectRef<Object> _car, ObjectRef<Object> _cdr);
-    Cons(Alma& alma, const std::vector<ObjectRef<Object>>& list);
-    Cons(Alma& alma, const std::vector<ObjectRef<Object>>& list, ObjectRef<Object> non_proper_element);
+    Cons(ObjectRef<Object> _car, ObjectRef<Object> _cdr);
+    Cons(const std::vector<ObjectRef<Object>>& list);
+    Cons(const std::vector<ObjectRef<Object>>& list, ObjectRef<Object> non_proper_element);
 
     std::pair<std::vector<ObjectRef<Object>>, ObjectRef<Object>> to_list() const;
 

@@ -3,6 +3,7 @@
 
 #include "gc/gc.hpp"
 #include <string>
+#include <vector>
 
 class Object;
 template <typename T>
@@ -71,6 +72,9 @@ private:
 
 public:
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<class Environment> environment);
+    virtual ObjectRef<Object> expand(ObjectRef<Object> self, ObjectRef<class Environment> environment);
+    virtual ObjectRef<Object> apply(ObjectRef<Object> self,
+        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment);
     virtual std::string to_string(ObjectRef<Object> self);
     virtual operator bool();
 };
@@ -508,7 +512,7 @@ template <typename T>
 ObjectRef<T>::ObjectRef(const ObjectRef& other)
     : ObjectWeakRef<T>(other)
 {
-    Object::protect_object(this->alma, &this->obj);
+    Object::protect_object(&this->obj);
 }
 
 template <typename T>
@@ -523,7 +527,7 @@ template <ObjectRefRelatedType<T> S>
 ObjectRef<T>::ObjectRef(S&& other)
     : ObjectWeakRef<T>(std::forward<S>(other))
 {
-    Object::protect_object(this->alma, &this->obj);
+    Object::protect_object(&this->obj);
 }
 
 template <typename T>

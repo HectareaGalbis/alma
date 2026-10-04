@@ -26,7 +26,7 @@ protected:
         const std::string& alma_rest_type);
 
 public:
-    Procedure(Alma& alma);
+    Procedure();
 
     virtual std::string to_string(ObjectRef<Object> self) override;
 
@@ -40,7 +40,7 @@ public:
 
 class Function : public Procedure {
 public:
-    Function(Alma& alma);
+    Function();
     virtual std::string to_string(ObjectRef<Object> self) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
@@ -52,12 +52,12 @@ public:
 
 class Macro : public Procedure {
 public:
-    Macro(Alma& alma);
+    Macro();
     virtual std::string to_string(ObjectRef<Object> self) override;
-    virtual ObjectRef<Object> transform(
-        ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list,
-        ObjectRef<Environment> enviroment) override;
+    // virtual ObjectRef<Object> transform(
+    //     ObjectRef<Object> self,
+    //     const std::vector<ObjectRef<Object>>& arg_list,
+    //     ObjectRef<Environment> enviroment) override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -80,7 +80,6 @@ protected:
 
 public:
     FunctionUser(
-        Alma& alma,
         const std::vector<ObjectRef<Object>>& param_list,
         const std::optional<ObjectRef<Object>>& param_rest,
         ObjectRef<Environment> closure,
@@ -105,7 +104,6 @@ protected:
 
 public:
     MacroUser(
-        Alma& alma,
         const std::vector<ObjectRef<Object>>& param_list,
         const std::optional<ObjectRef<Object>>& param_rest,
         ObjectRef<Environment> closure,

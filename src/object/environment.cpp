@@ -139,8 +139,7 @@ Environment::WithLayer::~WithLayer()
 
 // --------------------------------------------------------------------------------
 
-Environment::Environment(Alma& _alma)
-    : Object(_alma)
+Environment::Environment()
 {
     this->layers.emplace_back(*this);
 }

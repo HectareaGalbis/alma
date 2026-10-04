@@ -9,9 +9,8 @@
 
 // -----------------------------------------------------------------------------
 
-Cons::Cons(Alma& _alma, ObjectRef<Object> _car, ObjectRef<Object> _cdr)
-    : Object(_alma)
-    , car(*this, _car)
+Cons::Cons(ObjectRef<Object> _car, ObjectRef<Object> _cdr)
+    : car(*this, _car)
     , cdr(*this, _cdr)
 {
 }
@@ -37,17 +36,15 @@ static ObjectRef<Object> get_list_cdr(const std::vector<ObjectRef<Object>>& list
             list[currentIndex], get_list_cdr(list, currentIndex + 1, non_proper_element, alma));
 }
 
-Cons::Cons(Alma& _alma, const std::vector<ObjectRef<Object>>& list)
-    : Object(_alma)
-    , car(*this, get_list_car(list))
-    , cdr(*this, get_list_cdr(list, 1, alma.intern_alma_symbol("nil"), alma))
+Cons::Cons(const std::vector<ObjectRef<Object>>& list)
+    : car(*this, get_list_car(list))
+    , cdr(*this, get_list_cdr(list, 1, Alma::alma.intern_alma_symbol("nil"), Alma::alma))
 {
 }
 
-Cons::Cons(Alma& _alma, const std::vector<ObjectRef<Object>>& list, ObjectRef<Object> non_proper_element)
-    : Object(_alma)
-    , car(*this, get_list_car(list))
-    , cdr(*this, get_list_cdr(list, 1, non_proper_element, alma))
+Cons::Cons(const std::vector<ObjectRef<Object>>& list, ObjectRef<Object> non_proper_element)
+    : car(*this, get_list_car(list))
+    , cdr(*this, get_list_cdr(list, 1, non_proper_element, Alma::alma))
 {
 }
 
@@ -57,23 +54,23 @@ std::pair<std::vector<ObjectRef<Object>>, ObjectRef<Object>> Cons::to_list() con
     list.push_back(this->car);
     ObjectRef<Object> argIt = this->cdr;
     while (argIt) {
-        if (!this->alma.consp(argIt)) {
+        if (!Alma::alma.consp(argIt)) {
             return { list, argIt };
         }
         list.push_back(argIt.as<Cons>()->car);
         argIt = argIt.as<Cons>()->cdr;
     }
-    return { list, this->alma.intern_alma_symbol("nil") };
+    return { list, Alma::alma.intern_alma_symbol("nil") };
 }
 
 ObjectRef<Object> Cons::expand(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
 {
-    return this->alma.transform(this->alma.eval(this->car, environment), this->cdr, environment);
+    return Alma::alma.transform(Alma::alma.eval(this->car, environment), this->cdr, environment);
 }
 
 ObjectRef<Object> Cons::eval(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
 {
-    return this->alma.apply(this->alma.eval(this->car, environment), this->cdr, environment);
+    return Alma::alma.apply(Alma::alma.eval(this->car, environment), this->cdr, environment);
 }
 
 std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])

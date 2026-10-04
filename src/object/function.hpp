@@ -8,8 +8,8 @@
 #define declare_function(name)                              \
     class name : public Function {                          \
     public:                                                 \
-        name(Alma& _alma)                                   \
-            : Function(_alma)                               \
+        name()                                              \
+            : Function()                                    \
         {                                                   \
         }                                                   \
                                                             \

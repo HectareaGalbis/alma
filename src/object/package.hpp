@@ -13,7 +13,7 @@ private:
     std::map<char, ObjectTrackedRef<Procedure>> character_macros;
 
 public:
-    Package(Alma& alma);
+    Package();
     virtual std::string to_string(ObjectRef<Object> self) override;
 
     // Symbols

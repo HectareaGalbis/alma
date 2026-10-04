@@ -9,7 +9,7 @@ private:
     int64_t value;
 
 public:
-    Integer(Alma& alma, int64_t _value);
+    Integer(int64_t _value);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
 

@@ -4,8 +4,7 @@
 #include "debug.hpp"
 #include "symbol.hpp"
 
-Package::Package(Alma& _alma)
-    : Object(_alma)
+Package::Package()
 {
 }
 
@@ -19,14 +18,14 @@ ObjectRef<Object> Package::find_symbol(const std::string& name)
     if (this->symbols.contains(name)) {
         return this->symbols.at(name);
     } else {
-        return this->alma.intern_alma_symbol("nil");
+        return Alma::alma.intern_alma_symbol("nil");
     }
 }
 
 ObjectRef<Symbol> Package::intern_symbol(const std::string& name)
 {
     if (!this->symbols.contains(name))
-        this->symbols.try_emplace(name, *this, this->alma.make<Symbol>(name));
+        this->symbols.try_emplace(name, *this, Alma::alma.make<Symbol>(name));
     return this->symbols.at(name);
 }
 

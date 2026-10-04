@@ -29,7 +29,7 @@ Symbol::Symbol(const std::string& _name)
 ObjectRef<Object> Symbol::eval(ObjectRef<Object> self, ObjectRef<Environment> environment)
 {
     std::optional<ObjectRef<Object>> lex_value
-        = environment->get_value(self, this->alma.intern_alma_symbol("value"));
+        = environment->get_value(self, Alma::alma.intern_alma_symbol("value"));
     if (lex_value) {
         return *lex_value;
     } else {
@@ -94,50 +94,50 @@ void Symbol::pop_property(ObjectRef<Symbol> property)
 
 bool Symbol::has_value()
 {
-    return this->has_property(this->alma.intern_alma_symbol("value"));
+    return this->has_property(Alma::alma.intern_alma_symbol("value"));
 }
 
 ObjectRef<Object> Symbol::get_value()
 {
-    return this->get_property(this->alma.intern_alma_symbol("value"));
+    return this->get_property(Alma::alma.intern_alma_symbol("value"));
 }
 
 void Symbol::set_value(ObjectRef<Object> value)
 {
-    this->set_property(this->alma.intern_alma_symbol("value"), value);
+    this->set_property(Alma::alma.intern_alma_symbol("value"), value);
 }
 
 void Symbol::push_value(ObjectRef<Object> value)
 {
-    this->push_property(this->alma.intern_alma_symbol("value"), value);
+    this->push_property(Alma::alma.intern_alma_symbol("value"), value);
 }
 
 void Symbol::pop_value()
 {
-    this->pop_property(this->alma.intern_alma_symbol("value"));
+    this->pop_property(Alma::alma.intern_alma_symbol("value"));
 }
 
 bool Symbol::has_package()
 {
-    return this->has_property(this->alma.intern_alma_symbol("package"));
+    return this->has_property(Alma::alma.intern_alma_symbol("package"));
 }
 
 ObjectRef<Package> Symbol::get_package()
 {
-    return this->get_property(this->alma.intern_alma_symbol("package"));
+    return this->get_property(Alma::alma.intern_alma_symbol("package"));
 }
 
 void Symbol::set_package(ObjectRef<Package> package)
 {
-    this->set_property(this->alma.intern_alma_symbol("package"), package);
+    this->set_property(Alma::alma.intern_alma_symbol("package"), package);
 }
 
 void Symbol::push_package(ObjectRef<Package> package)
 {
-    this->push_property(this->alma.intern_alma_symbol("package"), package);
+    this->push_property(Alma::alma.intern_alma_symbol("package"), package);
 }
 
 void Symbol::pop_package()
 {
-    this->pop_property(this->alma.intern_alma_symbol("package"));
+    this->pop_property(Alma::alma.intern_alma_symbol("package"));
 }

@@ -16,7 +16,7 @@ void Procedure::check_types(
         athrow("Expected " << alma_types.size() << " arguments but received " << arg_list.size());
 
     for (size_t i = 0; i < arg_list.size(); i++) {
-        if (!this->alma.alma_typep(arg_list[i], alma_types[i]))
+        if (!Alma::alma.alma_typep(arg_list[i], alma_types[i]))
             athrow("The argument number " << i << " must be a " << alma_types[i]);
     }
 }
@@ -29,19 +29,18 @@ void Procedure::check_types(
     if (arg_list.size() < alma_types.size())
         athrow("Expected at least " << arg_list.size() << " arguments but received " << alma_types.size());
     for (size_t i = 0; i < alma_types.size(); i++) {
-        if (!this->alma.alma_typep(arg_list[i], alma_types[i]))
+        if (!Alma::alma.alma_typep(arg_list[i], alma_types[i]))
             athrow("The argument number " << i << " must be a " << alma_types[i]);
     }
     if (alma_rest_type != "t") {
         for (size_t i = alma_types.size(); i < arg_list.size(); i++) {
-            if (!this->alma.alma_typep(arg_list[i], alma_rest_type))
+            if (!Alma::alma.alma_typep(arg_list[i], alma_rest_type))
                 athrow("The argument number " << i << " must be a " << alma_rest_type);
         }
     }
 }
 
-Procedure::Procedure(Alma& _alma)
-    : Object(_alma)
+Procedure::Procedure()
 {
 }
 
@@ -60,8 +59,7 @@ ObjectRef<Object> Procedure::apply(
 
 // -----------------------------------------------------------------------------
 
-Function::Function(Alma& _alma)
-    : Procedure(_alma)
+Function::Function()
 {
 }
 
@@ -77,15 +75,14 @@ ObjectRef<Object> Function::apply(
 {
     std::vector<ObjectRef<Object>> eval_arg_list;
     for (const ObjectRef<Object>& arg : arg_list)
-        eval_arg_list.push_back(this->alma.eval(arg));
+        eval_arg_list.push_back(Alma::alma.eval(arg));
 
     return this->eval_body(eval_arg_list, enviroment);
 }
 
 // -----------------------------------------------------------------------------
 
-Macro::Macro(Alma& _alma)
-    : Procedure(_alma)
+Macro::Macro()
 {
 }
 
@@ -107,18 +104,17 @@ ObjectRef<Object> Macro::apply(
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> enviroment)
 {
-    return this->alma.eval(this->transform(self, arg_list, enviroment));
+    return Alma::alma.eval(this->transform(self, arg_list, enviroment));
 }
 
 // -----------------------------------------------------------------------------
 
 FunctionUser::FunctionUser(
-    Alma& _alma,
     const std::vector<ObjectRef<Object>>& _param_list,
     const std::optional<ObjectRef<Object>>& _param_rest,
     ObjectRef<Environment> _closure,
     const std::vector<ObjectRef<Object>>& _body)
-    : Function(_alma)
+    : Function()
     , closure(*this, _closure)
 {
     for (ObjectRef<Object> param : _param_list)
@@ -156,7 +152,7 @@ ObjectRef<Object> FunctionUser::eval_body(
                 this->param_list[i], alma.intern_alma_symbol("value"), arg_list[i]);
         if (this->param_rest)
             this->closure->insert_or_set_value(
-                *this->param_rest, alma.intern_alma_symbol("value"), this->alma.make<Cons>(arg_rest));
+                *this->param_rest, alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
 
         for (size_t i = 0; i < this->body.size() - 1; i++)
             alma.eval(this->body[i], this->closure);
@@ -172,12 +168,11 @@ std::string FunctionUser::to_string(ObjectRef<Object> self [[maybe_unused]])
 // -----------------------------------------------------------------------------
 
 MacroUser::MacroUser(
-    Alma& _alma,
     const std::vector<ObjectRef<Object>>& _param_list,
     const std::optional<ObjectRef<Object>>& _param_rest,
     ObjectRef<Environment> _closure,
     const std::vector<ObjectRef<Object>>& _body)
-    : Macro(_alma)
+    : Macro()
     , closure(*this, _closure)
 {
     for (ObjectRef<Object> param : _param_list)
@@ -215,7 +210,7 @@ ObjectRef<Object> MacroUser::eval_body(
                 this->param_list[i], alma.intern_alma_symbol("value"), arg_list[i]);
         if (this->param_rest)
             this->closure->insert_or_set_value(
-                *this->param_rest, alma.intern_alma_symbol("value"), this->alma.make<Cons>(arg_rest));
+                *this->param_rest, alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
 
         for (size_t i = 0; i < this->body.size() - 1; i++)
             alma.eval(this->body[i], this->closure);

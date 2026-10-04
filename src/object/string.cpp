@@ -2,9 +2,8 @@
 #include "string.hpp"
 #include "alma.hpp"
 
-String::String(Alma& _alma, const std::string& _content)
-    : Object(_alma)
-    , content(_content)
+String::String(const std::string& _content)
+    : content(_content)
 {
 }
 

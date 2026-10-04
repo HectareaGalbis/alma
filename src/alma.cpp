@@ -41,8 +41,8 @@ void Alma::intern_symbols()
 
 Alma::Alma()
     : gc()
-    , environment(*this, gc.make_object<Environment>(*this))
-    , alma_package(*this, gc.make_object<Package>(*this))
+    , environment(*this, gc.make_object<Environment>())
+    , alma_package(*this, gc.make_object<Package>())
     , current_package(alma_package)
     , nil(gc.make_object<Nil>())
 {

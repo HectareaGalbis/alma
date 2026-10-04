@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "alma.hpp"
 #include "object.hpp"
 #include "symbol.hpp"
 #include <optional>
@@ -62,7 +61,7 @@ public:
     };
 
 public:
-    Environment(Alma& alma);
+    Environment();
     Environment(const Environment& other);
 
     virtual std::string to_string(ObjectRef<Object> self) override;

@@ -9,7 +9,7 @@ private:
     std::string content;
 
 public:
-    String(Alma& alma, const std::string& content);
+    String(const std::string& content);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
 };

@@ -10,7 +10,7 @@ private:
     ObjectTrackedRef<Object> obj;
 
 public:
-    CharacterMacro(Alma& alma, ObjectRef<Procedure> transformer, ObjectRef<Object> obj);
+    CharacterMacro(ObjectRef<Procedure> transformer, ObjectRef<Object> obj);
 
     virtual ObjectRef<Object> expand(ObjectRef<Object> self, ObjectRef<Environment> enviroment) override;
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment) override;
