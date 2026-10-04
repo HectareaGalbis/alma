@@ -18,7 +18,7 @@ void Alma::intern_functions()
 {
     intern_function(Sum, "+");
     intern_function(Print, "print");
-    intern_function(Typep, "typep");
+    intern_function(Type, "type");
     intern_function(Set_symbol_value, "set-symbol-value");
     intern_function(Car, "car");
     intern_function(Cdr, "cdr");
@@ -41,10 +41,11 @@ void Alma::intern_symbols()
 
 Alma::Alma()
     : gc()
-    , environment(*this, gc.make_object<Environment>())
-    , alma_package(*this, gc.make_object<Package>())
+    , environment(gc.make_object<Environment>())
+    , alma_package(gc.make_object<Package>())
     , current_package(alma_package)
     , nil(gc.make_object<Nil>())
+    , type_system(gc.make_object<TypeSystem>())
 {
     this->intern_symbols();
     this->intern_functions();
@@ -134,19 +135,19 @@ std::string Alma::to_string(ObjectRef<Object> obj)
     return obj->to_string(obj);
 }
 
-bool Alma::typep(ObjectRef<Object> obj, ObjectRef<Object> sym)
+ObjectRef<Object> Alma::type(ObjectRef<Object> obj)
 {
-    return obj->typep(obj, sym);
+    return obj->type(obj);
 }
 
-bool Alma::alma_typep(ObjectRef<Object> obj, const std::string& type)
+bool Alma::typep(ObjectRef<Object> obj, ObjectRef<Object> type)
 {
-    return this->typep(obj, this->intern_alma_symbol(type));
+    return this->type_system->subtypep(this->type(obj), type);
 }
 
 bool Alma::symbolp(ObjectRef<Object> obj)
 {
-    return this->typep(obj, this->intern_alma_symbol("symbol"));
+    return this->type(obj) == this->intern_alma_symbol("symbol");
 }
 
 ObjectRef<Object> Alma::symbol_value(ObjectRef<Symbol> symbol)
@@ -162,7 +163,7 @@ ObjectRef<Object> Alma::set_symbol_value(ObjectRef<Symbol> symbol, ObjectRef<Obj
 
 bool Alma::consp(ObjectRef<Object> obj)
 {
-    return this->typep(obj, this->intern_alma_symbol("cons"));
+    return this->type(obj) == this->intern_alma_symbol("cons");
 }
 
 bool Alma::truep(ObjectRef<Object> obj)

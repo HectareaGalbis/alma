@@ -1,7 +1,7 @@
 
 #include "environment.hpp"
+#include "alma.hpp"
 #include "debug.hpp"
-#include <stdexcept>
 
 Environment::Layer::Property::Property(Environment& _owner)
     : owner(_owner)
@@ -154,6 +154,11 @@ Environment::Environment(const Environment& other)
 std::string Environment::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<environment>";
+}
+
+ObjectRef<Object> Environment::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("environment");
 }
 
 bool Environment::has_symbol_property(ObjectRef<Symbol> symbol, ObjectRef<Symbol> property) const

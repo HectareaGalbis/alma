@@ -5,6 +5,7 @@
 #include "object/cons.hpp"
 #include "object/nil.hpp"
 #include "object/object.hpp"
+#include "object/type_system.hpp"
 #include <filesystem>
 #include <vector>
 
@@ -24,6 +25,7 @@ private:
     ObjectRef<Package> alma_package;
     ObjectRef<Package> current_package;
     ObjectRef<Nil> nil;
+    ObjectRef<TypeSystem> type_system;
 
 private:
     static Alma* global_alma;
@@ -87,9 +89,11 @@ public:
     /** Return a string representation of an object */
     std::string to_string(ObjectRef<Object> obj);
 
-    /** Check the type of an object */
-    bool typep(ObjectRef<Object> obj, ObjectRef<Object> sym);
-    bool alma_typep(ObjectRef<Object> obj, const std::string& type);
+    /** Return a symbol representing the type of an object */
+    ObjectRef<Object> type(ObjectRef<Object> obj);
+
+    /** Check if an object is of a type */
+    bool typep(ObjectRef<Object> obj, ObjectRef<Object> type);
 
     /** Check if an object is a symbol */
     bool symbolp(ObjectRef<Object> obj);

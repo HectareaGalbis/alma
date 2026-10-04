@@ -29,3 +29,8 @@ std::string Character::to_string(ObjectRef<Object> self [[maybe_unused]])
 
     return str;
 }
+
+ObjectRef<Object> Character::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("character");
+}

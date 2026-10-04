@@ -29,6 +29,7 @@ public:
     Procedure();
 
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
@@ -42,6 +43,7 @@ class Function : public Procedure {
 public:
     Function();
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
     virtual ObjectRef<Object> apply(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -54,6 +56,7 @@ class Macro : public Procedure {
 public:
     Macro();
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
     virtual ObjectRef<Object> transform(
         ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -86,6 +89,7 @@ public:
         const std::vector<ObjectRef<Object>>& body);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 };
 
 // -----------------------------------------------------------------------------
@@ -110,6 +114,7 @@ public:
         const std::vector<ObjectRef<Object>>& body);
 
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 };
 
 // -----------------------------------------------------------------------------

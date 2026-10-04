@@ -97,6 +97,11 @@ std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])
     return s.str();
 }
 
+ObjectRef<Object> Cons::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("cons");
+}
+
 ObjectRef<Object> Cons::get_car()
 {
     return this->car;

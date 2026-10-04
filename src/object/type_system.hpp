@@ -12,6 +12,9 @@ private:
 public:
     TypeSystem();
 
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
+
     void insert_type(ObjectRef<Symbol> type, ObjectRef<Symbol> parent);
     bool has_type(ObjectRef<Symbol> type);
+    bool subtypep(ObjectRef<Symbol> type, ObjectRef<Symbol> supertype);
 };

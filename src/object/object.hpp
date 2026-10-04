@@ -78,6 +78,7 @@ public:
     virtual ObjectRef<Object> apply(ObjectRef<Object> self,
         const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment);
     virtual std::string to_string(ObjectRef<Object> self);
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const;
     virtual operator bool();
 };
 

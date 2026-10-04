@@ -21,7 +21,7 @@
 
 declare_function(Sum);
 declare_function(Print);
-declare_function(Typep);
+declare_function(Type);
 declare_function(Set_symbol_value);
 declare_function(Setq);
 declare_function(Car);

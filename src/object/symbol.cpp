@@ -42,6 +42,11 @@ std::string Symbol::to_string(ObjectRef<Object> self [[maybe_unused]])
     return this->name;
 }
 
+ObjectRef<Object> Symbol::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("symbol");
+}
+
 std::string& Symbol::get_name()
 {
     return this->name;

@@ -27,3 +27,8 @@ std::string String::to_string(ObjectRef<Object> self [[maybe_unused]])
     ss.push_back('"');
     return ss;
 }
+
+ObjectRef<Object> String::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("string");
+}

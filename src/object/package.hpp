@@ -16,6 +16,7 @@ private:
 public:
     Package();
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 
     // Symbols
     std::optional<ObjectRef<Object>> find_symbol(const std::string& name);

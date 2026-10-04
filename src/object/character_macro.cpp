@@ -23,3 +23,8 @@ std::string CharacterMacro::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<character-macro>";
 }
+
+ObjectRef<Object> CharacterMacro::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("character-macro");
+}

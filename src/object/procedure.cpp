@@ -8,6 +8,11 @@
 #include "symbol.hpp"
 #include <stdexcept>
 
+static bool is_type(ObjectRef<Object> obj, const std::string& type)
+{
+    return Alma::alma.typep(obj, Alma::alma.intern_alma_symbol(type));
+}
+
 void Procedure::check_types(
     const std::vector<ObjectRef<Object>>& arg_list,
     const std::vector<std::string>& alma_types)
@@ -16,7 +21,7 @@ void Procedure::check_types(
         athrow("Expected " << alma_types.size() << " arguments but received " << arg_list.size());
 
     for (size_t i = 0; i < arg_list.size(); i++) {
-        if (!Alma::alma.alma_typep(arg_list[i], alma_types[i]))
+        if (!is_type(arg_list[i], alma_types[i]))
             athrow("The argument number " << i << " must be a " << alma_types[i]);
     }
 }
@@ -29,12 +34,12 @@ void Procedure::check_types(
     if (arg_list.size() < alma_types.size())
         athrow("Expected at least " << arg_list.size() << " arguments but received " << alma_types.size());
     for (size_t i = 0; i < alma_types.size(); i++) {
-        if (!Alma::alma.alma_typep(arg_list[i], alma_types[i]))
+        if (!is_type(arg_list[i], alma_types[i]))
             athrow("The argument number " << i << " must be a " << alma_types[i]);
     }
     if (alma_rest_type != "t") {
         for (size_t i = alma_types.size(); i < arg_list.size(); i++) {
-            if (!Alma::alma.alma_typep(arg_list[i], alma_rest_type))
+            if (!is_type(arg_list[i], alma_rest_type))
                 athrow("The argument number " << i << " must be a " << alma_rest_type);
         }
     }
@@ -47,6 +52,11 @@ Procedure::Procedure()
 std::string Procedure::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<procedure>";
+}
+
+ObjectRef<Object> Procedure::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("procedure");
 }
 
 ObjectRef<Object> Procedure::apply(
@@ -66,6 +76,11 @@ Function::Function()
 std::string Function::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<function>";
+}
+
+ObjectRef<Object> Function::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("function");
 }
 
 ObjectRef<Object> Function::apply(
@@ -89,6 +104,11 @@ Macro::Macro()
 std::string Macro::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<macro>";
+}
+
+ObjectRef<Object> Macro::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("macro");
 }
 
 ObjectRef<Object> Macro::transform(
@@ -165,6 +185,11 @@ std::string FunctionUser::to_string(ObjectRef<Object> self [[maybe_unused]])
     return "<function-user>";
 }
 
+ObjectRef<Object> FunctionUser::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("function-user");
+}
+
 // -----------------------------------------------------------------------------
 
 MacroUser::MacroUser(
@@ -221,6 +246,11 @@ ObjectRef<Object> MacroUser::eval_body(
 std::string MacroUser::to_string(ObjectRef<Object> self [[maybe_unused]])
 {
     return "<macro-user>";
+}
+
+ObjectRef<Object> MacroUser::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("macro-user");
 }
 
 // -----------------------------------------------------------------------------

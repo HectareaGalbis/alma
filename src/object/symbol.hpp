@@ -22,6 +22,7 @@ public:
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
     virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 
     std::string& get_name();
     const std::string& get_name() const;

@@ -13,6 +13,11 @@ std::string Package::to_string(ObjectRef<Object> self [[maybe_unused]])
     return "<package>";
 }
 
+ObjectRef<Object> Package::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("package");
+}
+
 std::optional<ObjectRef<Object>> Package::find_symbol(const std::string& name)
 {
     if (this->symbols.contains(name)) {
