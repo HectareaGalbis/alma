@@ -45,23 +45,8 @@ public:
 
 using Specifier = std::variant<Pointer, Dimension>;
 
-static std::string specifier_to_string(const Specifier& specifier, const std::string& core)
-{
-    if (std::holds_alternative<Pointer>(specifier))
-        return "*" + core;
-    else {
-        return "(" + core + ")[" + std::to_string(std::get<Dimension>(specifier).n) + "]";
-    }
-}
-
-static std::string specifiers_to_string(const std::vector<Specifier>& specifiers, const std::string& core)
-{
-    std::string result = core;
-    for (auto it = specifiers.crbegin(); it != specifiers.crend(); ++it) {
-        result += specifier_to_string(*it, result);
-    }
-    return result;
-}
+std::string specifier_to_string(const Specifier& specifier, const std::string& core);
+std::string specifiers_to_string(const std::vector<Specifier>& specifiers, const std::string& core);
 
 class ValueType;
 class FunctionType;
@@ -83,41 +68,15 @@ private:
     std::vector<Specifier> specifiers;
 
 public:
-    ValueType(const std::string& name, const std::vector<Specifier>& specifiers)
-        : name(name)
-        , specifiers(specifiers)
-    {
-    }
+    ValueType(const std::string& name, const std::vector<Specifier>& specifiers);
+    ValueType(const ValueType& other);
 
-    ValueType(const ValueType& other)
-        : name(other.name)
-        , specifiers(other.specifiers)
-    {
-    }
+    std::unique_ptr<Type> clone() const override;
+    std::string to_string(const std::string& core) const override;
 
-    std::unique_ptr<Type> clone() const override
-    {
-        return std::make_unique<ValueType>(*this);
-    }
-
-    std::string to_string(const std::string& core) const override
-    {
-        std::string result = specifiers_to_string(specifiers, core);
-        return name + " " + result;
-    }
-
-    bool operator==(const Type& other) const override
-    {
-        return other == *this;
-    }
-    bool operator==(const ValueType& other) const override
-    {
-        return name == other.name && specifiers == other.specifiers;
-    }
-    bool operator==(const FunctionType& other [[maybe_unused]]) const override
-    {
-        return false;
-    }
+    bool operator==(const Type& other) const override;
+    bool operator==(const ValueType& other) const override;
+    bool operator==(const FunctionType& other [[maybe_unused]]) const override;
 };
 
 class FunctionType : public Type {
@@ -127,65 +86,13 @@ private:
     std::vector<Specifier> specifiers;
 
 public:
-    FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<ValueType>>& _arguments, const std::vector<Specifier>& _specifiers)
-        : result(_result->clone())
-        , specifiers(_specifiers)
-    {
-        for (const std::unique_ptr<ValueType>& argument : _arguments)
-            arguments.emplace_back(argument->clone());
-    }
+    FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<ValueType>>& _arguments, const std::vector<Specifier>& _specifiers);
+    FunctionType(const FunctionType& other);
 
-    FunctionType(const FunctionType& other)
-        : result(other.result->clone())
-        , specifiers(other.specifiers)
-    {
-        for (const std::unique_ptr<Type>& argument : other.arguments)
-            arguments.emplace_back(argument->clone());
-    }
+    std::unique_ptr<Type> clone() const override;
+    std::string to_string(const std::string& core) const override;
 
-    std::unique_ptr<Type> clone() const override
-    {
-        return std::make_unique<FunctionType>(*this);
-    }
-
-    std::string to_string(const std::string& core) const override
-    {
-        std::string new_core = specifiers_to_string(specifiers, core);
-        new_core = "(" + new_core + ")(";
-        auto it = arguments.cbegin();
-        if (it != arguments.cend()) {
-            new_core += (*it)->to_string(new_core);
-            it++;
-        }
-        for (; it != arguments.cend(); it++) {
-            new_core += "+" + (*it)->to_string(new_core);
-        }
-        new_core += ")";
-        return result->to_string(new_core);
-    }
-
-    bool operator==(const Type& other) const override
-    {
-        return other == *this;
-    }
-    bool operator==(const ValueType& other [[maybe_unused]]) const override
-    {
-        return false;
-    }
-    bool operator==(const FunctionType& other) const override
-    {
-        if (*result != *other.result)
-            return false;
-
-        if (arguments.size() != other.arguments.size())
-            return false;
-        for (size_t i = 0; i < arguments.size(); i++)
-            if (*arguments[i] != *other.arguments[i])
-                return false;
-
-        if (specifiers != other.specifiers)
-            return false;
-
-        return true;
-    }
+    bool operator==(const Type& other) const override;
+    bool operator==(const ValueType& other [[maybe_unused]]) const override;
+    bool operator==(const FunctionType& other) const override;
 };
