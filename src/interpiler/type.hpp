@@ -58,8 +58,10 @@ public:
     virtual bool operator==(const Type& other) const = 0;
     virtual bool operator==(const ValueType& other) const = 0;
     virtual bool operator==(const FunctionType& other) const = 0;
+
     virtual std::unique_ptr<Type> clone() const = 0;
     virtual std::string to_string(const std::string& core) const = 0;
+    virtual bool is_function() const = 0;
 };
 
 class ValueType : public Type {
@@ -71,12 +73,13 @@ public:
     ValueType(const std::string& name, const std::vector<Specifier>& specifiers);
     ValueType(const ValueType& other);
 
-    std::unique_ptr<Type> clone() const override;
-    std::string to_string(const std::string& core) const override;
-
     bool operator==(const Type& other) const override;
     bool operator==(const ValueType& other) const override;
     bool operator==(const FunctionType& other [[maybe_unused]]) const override;
+
+    std::unique_ptr<Type> clone() const override;
+    std::string to_string(const std::string& core) const override;
+    bool is_function() const override;
 };
 
 class FunctionType : public Type {
@@ -89,10 +92,11 @@ public:
     FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<ValueType>>& _arguments, const std::vector<Specifier>& _specifiers);
     FunctionType(const FunctionType& other);
 
-    std::unique_ptr<Type> clone() const override;
-    std::string to_string(const std::string& core) const override;
-
     bool operator==(const Type& other) const override;
     bool operator==(const ValueType& other [[maybe_unused]]) const override;
     bool operator==(const FunctionType& other) const override;
+
+    std::unique_ptr<Type> clone() const override;
+    std::string to_string(const std::string& core) const override;
+    bool is_function() const override;
 };

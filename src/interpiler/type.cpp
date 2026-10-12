@@ -31,6 +31,19 @@ ValueType::ValueType(const ValueType& other)
 {
 }
 
+bool ValueType::operator==(const Type& other) const
+{
+    return other == *this;
+}
+bool ValueType::operator==(const ValueType& other) const
+{
+    return name == other.name && specifiers == other.specifiers;
+}
+bool ValueType::operator==(const FunctionType& other [[maybe_unused]]) const
+{
+    return false;
+}
+
 std::unique_ptr<Type> ValueType::clone() const
 {
     return std::make_unique<ValueType>(*this);
@@ -42,15 +55,7 @@ std::string ValueType::to_string(const std::string& core) const
     return name + " " + result;
 }
 
-bool ValueType::operator==(const Type& other) const
-{
-    return other == *this;
-}
-bool ValueType::operator==(const ValueType& other) const
-{
-    return name == other.name && specifiers == other.specifiers;
-}
-bool ValueType::operator==(const FunctionType& other [[maybe_unused]]) const
+bool ValueType::is_function() const
 {
     return false;
 }
@@ -69,27 +74,6 @@ FunctionType::FunctionType(const FunctionType& other)
 {
     for (const std::unique_ptr<Type>& argument : other.arguments)
         arguments.emplace_back(argument->clone());
-}
-
-std::unique_ptr<Type> FunctionType::clone() const
-{
-    return std::make_unique<FunctionType>(*this);
-}
-
-std::string FunctionType::to_string(const std::string& core) const
-{
-    std::string new_core = specifiers_to_string(specifiers, core);
-    new_core = "(" + new_core + ")(";
-    auto it = arguments.cbegin();
-    if (it != arguments.cend()) {
-        new_core += (*it)->to_string(new_core);
-        it++;
-    }
-    for (; it != arguments.cend(); it++) {
-        new_core += "+" + (*it)->to_string(new_core);
-    }
-    new_core += ")";
-    return result->to_string(new_core);
 }
 
 bool FunctionType::operator==(const Type& other) const
@@ -115,4 +99,30 @@ bool FunctionType::operator==(const FunctionType& other) const
         return false;
 
     return true;
+}
+
+std::unique_ptr<Type> FunctionType::clone() const
+{
+    return std::make_unique<FunctionType>(*this);
+}
+
+std::string FunctionType::to_string(const std::string& core) const
+{
+    std::string new_core = specifiers_to_string(specifiers, core);
+    new_core = "(" + new_core + ")(";
+    auto it = arguments.cbegin();
+    if (it != arguments.cend()) {
+        new_core += (*it)->to_string(new_core);
+        it++;
+    }
+    for (; it != arguments.cend(); it++) {
+        new_core += "+" + (*it)->to_string(new_core);
+    }
+    new_core += ")";
+    return result->to_string(new_core);
+}
+
+bool FunctionType::is_function() const
+{
+    return specifiers.empty();
 }
