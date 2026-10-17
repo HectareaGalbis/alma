@@ -11,6 +11,11 @@ static bool is_valid_function_argument(const Type& argument)
     return !argument.is_function();
 }
 
+static bool are_valid_function_specifiers(const std::vector<Specifier>& specifiers)
+{
+    return specifiers.empty() || !std::holds_alternative<Dimension>(specifiers.front());
+}
+
 static std::unique_ptr<Type> parse_type_object(const ObjectRef<Object>& obj)
 {
     if (Alma::alma.symbolp(obj))
@@ -52,7 +57,7 @@ std::unique_ptr<Type> Type::parse(const ObjectRef<Cons>& cons)
         std::vector<Specifier> specifiers;
         for (size_t i = 2; i < list.size(); i++)
             specifiers.push_back(parse_specifier(list[i]));
-        aassert(specifiers.empty() || !std::holds_alternative<Dimension>(specifiers.front()),
+        aassert(are_valid_function_specifiers(specifiers),
             "A function type cannot be an array: " << Alma::alma.to_string(cons));
 
         return std::make_unique<FunctionType>(result, arguments, specifiers);
@@ -128,7 +133,7 @@ FunctionType::FunctionType(const std::unique_ptr<Type>& _result, const std::vect
     : result(_result->clone())
     , specifiers(_specifiers)
 {
-    aassert(specifiers.empty() || !std::holds_alternative<Dimension>(specifiers.front()),
+    aassert(are_valid_function_specifiers(specifiers),
         "A function type cannot be an array");
     for (const std::unique_ptr<Type>& argument : _arguments) {
         aassert(is_valid_function_argument(*argument), "A function argument cannot be a function");
