@@ -1,5 +1,69 @@
 
 #include "type.hpp"
+#include "../alma.hpp"
+#include "../debug.hpp"
+#include "../object/cons.hpp"
+#include "../object/integer.hpp"
+#include "../object/symbol.hpp"
+
+static bool is_valid_function_argument(const Type& argument)
+{
+    return !argument.is_function();
+}
+
+static std::unique_ptr<Type> parse_type_object(const ObjectRef<Object>& obj)
+{
+    if (Alma::alma.symbolp(obj))
+        return std::make_unique<ValueType>(obj.as<Symbol>()->get_name(), std::vector<Specifier> {});
+    aassert(Alma::alma.consp(obj), "Expected a type but found " << Alma::alma.to_string(obj));
+    return Type::parse(ObjectRef<Cons>(obj));
+}
+
+static Specifier parse_specifier(const ObjectRef<Object>& obj)
+{
+    if (Alma::alma.symbolp(obj) && obj.as<Symbol>()->get_name() == "*")
+        return Pointer {};
+    aassert(Alma::alma.typep(obj, Alma::alma.intern_alma_symbol("integer")),
+        "Expected '*' or an integer as specifier but found " << Alma::alma.to_string(obj));
+    return Dimension { static_cast<size_t>(obj.as<Integer>()->get_value()) };
+}
+
+std::unique_ptr<Type> Type::parse(const ObjectRef<Cons>& cons)
+{
+    auto [list, tail] = cons->to_list();
+    aassert(Alma::alma.null(tail), "Expected a proper list as type but found " << Alma::alma.to_string(cons));
+
+    if (list.size() >= 2 && (Alma::alma.consp(list[1]) || Alma::alma.null(list[1]))) {
+        std::unique_ptr<Type> result = parse_type_object(list[0]);
+
+        std::vector<std::unique_ptr<Type>> arguments;
+        if (Alma::alma.consp(list[1])) {
+            auto [argument_list, argument_tail] = list[1].as<Cons>()->to_list();
+            aassert(Alma::alma.null(argument_tail),
+                "Expected a proper list of arguments but found " << Alma::alma.to_string(list[1]));
+            for (const ObjectRef<Object>& argument_object : argument_list) {
+                std::unique_ptr<Type> argument = parse_type_object(argument_object);
+                aassert(is_valid_function_argument(*argument),
+                    "A function argument cannot be a function: " << Alma::alma.to_string(argument_object));
+                arguments.push_back(std::move(argument));
+            }
+        }
+
+        std::vector<Specifier> specifiers;
+        for (size_t i = 2; i < list.size(); i++)
+            specifiers.push_back(parse_specifier(list[i]));
+        aassert(specifiers.empty() || !std::holds_alternative<Dimension>(specifiers.front()),
+            "A function type cannot be an array: " << Alma::alma.to_string(cons));
+
+        return std::make_unique<FunctionType>(result, arguments, specifiers);
+    }
+
+    aassert(Alma::alma.symbolp(list[0]), "Expected a type name but found " << Alma::alma.to_string(list[0]));
+    std::vector<Specifier> specifiers;
+    for (size_t i = 1; i < list.size(); i++)
+        specifiers.push_back(parse_specifier(list[i]));
+    return std::make_unique<ValueType>(list[0].as<Symbol>()->get_name(), specifiers);
+}
 
 std::string specifier_to_string(const Specifier& specifier, const std::string& core)
 {
@@ -60,12 +124,16 @@ bool ValueType::is_function() const
     return false;
 }
 
-FunctionType::FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<ValueType>>& _arguments, const std::vector<Specifier>& _specifiers)
+FunctionType::FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<Type>>& _arguments, const std::vector<Specifier>& _specifiers)
     : result(_result->clone())
     , specifiers(_specifiers)
 {
-    for (const std::unique_ptr<ValueType>& argument : _arguments)
+    aassert(specifiers.empty() || !std::holds_alternative<Dimension>(specifiers.front()),
+        "A function type cannot be an array");
+    for (const std::unique_ptr<Type>& argument : _arguments) {
+        aassert(is_valid_function_argument(*argument), "A function argument cannot be a function");
         arguments.emplace_back(argument->clone());
+    }
 }
 
 FunctionType::FunctionType(const FunctionType& other)

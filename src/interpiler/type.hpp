@@ -50,10 +50,15 @@ std::string specifiers_to_string(const std::vector<Specifier>& specifiers, const
 
 class ValueType;
 class FunctionType;
+class Cons;
+template <typename T>
+class ObjectRef;
 
 class Type {
 public:
     virtual ~Type() = default;
+
+    static std::unique_ptr<Type> parse(const ObjectRef<Cons>& cons);
 
     virtual bool operator==(const Type& other) const = 0;
     virtual bool operator==(const ValueType& other) const = 0;
@@ -89,7 +94,7 @@ private:
     std::vector<Specifier> specifiers;
 
 public:
-    FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<ValueType>>& _arguments, const std::vector<Specifier>& _specifiers);
+    FunctionType(const std::unique_ptr<Type>& _result, const std::vector<std::unique_ptr<Type>>& _arguments, const std::vector<Specifier>& _specifiers);
     FunctionType(const FunctionType& other);
 
     bool operator==(const Type& other) const override;

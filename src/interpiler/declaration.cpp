@@ -3,10 +3,18 @@
 #include "../debug.hpp"
 
 Declaration::Declaration(const std::string& name, const std::unique_ptr<Type>& type, bool defined)
-    : name(name), type(type->clone()), defined(defined) {}
+    : name(name)
+    , type(type->clone())
+    , defined(defined)
+{
+}
 
 Declaration::Declaration(const Declaration& other)
-    : name(other.name), type(other.type->clone()), defined(other.defined) {}
+    : name(other.name)
+    , type(other.type->clone())
+    , defined(other.defined)
+{
+}
 
 Declaration& Declaration::operator=(const Declaration& other)
 {
@@ -30,7 +38,8 @@ bool Declaration::isDefined() const { return defined; }
 
 void Declaration::define() { defined = true; }
 
-bool Declaration::operator==(const Declaration& other) const {
+bool Declaration::operator==(const Declaration& other) const
+{
     return name == other.name && *type == *other.type;
 }
 
@@ -58,14 +67,4 @@ const Declaration& Declarations::get(const std::string& name) const
     auto it = declarations.find(name);
     aassert(it != declarations.end(), "Declaration '" << name << "' not found");
     return it->second;
-}
-
-bool Declarations::isDefined(const std::string& name) const { return get(name).isDefined(); }
-
-void Declarations::define(const std::string& name)
-{
-    auto it = declarations.find(name);
-    aassert(it != declarations.end(), "Declaration '" << name << "' not found");
-    aassert(!it->second.isDefined(), "Redefinition of '" << name << "'");
-    it->second.define();
 }
