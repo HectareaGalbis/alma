@@ -1,0 +1,326 @@
+; Marcianitos con SDL2.
+;
+; Flechas para moverse, espacio para disparar, Enter para empezar de nuevo y
+; Escape para salir. Los puntos y las vidas se ven en el titulo de la ventana.
+;
+; alma no puede incluir SDL.h, asi que aqui se declaran las funciones de SDL que
+; se usan, con (void *) para las ventanas y renderers, y structs propios con la
+; misma forma que los de SDL. No hace falta libsdl2-dev, basta la biblioteca:
+;
+;   ./alma -O2 -o marcianitos examples/10_marcianitos.alma -l:libSDL2-2.0.so.0 && ./marcianitos
+
+; -----------------------------------------------------------------------------
+; SDL2
+
+(struct Rect (x int) (y int) (w int) (h int))
+
+; SDL_Event es una union de 56 bytes alineada a 8 que empieza por el tipo
+(struct Evento (type uint32_t) (relleno uint32_t) (datos (void * 7)))
+
+(function SDL_Init int ((flags uint32_t)))
+(function SDL_Quit void ())
+(function SDL_CreateWindow (void *) ((titulo (char *)) (x int) (y int) (w int) (h int) (flags uint32_t)))
+(function SDL_DestroyWindow void ((ventana (void *))))
+(function SDL_SetWindowTitle void ((ventana (void *)) (titulo (char *))))
+(function SDL_CreateRenderer (void *) ((ventana (void *)) (indice int) (flags uint32_t)))
+(function SDL_DestroyRenderer void ((renderer (void *))))
+(function SDL_SetRenderDrawColor int ((renderer (void *)) (r uint8_t) (g uint8_t) (b uint8_t) (a uint8_t)))
+(function SDL_RenderClear int ((renderer (void *))))
+(function SDL_RenderFillRect int ((renderer (void *)) (rect (Rect *))))
+(function SDL_RenderPresent void ((renderer (void *))))
+(function SDL_PollEvent int ((evento (Evento *))))
+(function SDL_GetKeyboardState (uint8_t *) ((numero (int *))))
+(function SDL_Delay void ((ms uint32_t)))
+(function SDL_GetError (char *) ())
+
+; Constantes de SDL (alma no tiene literales hexadecimales)
+(macro SDL_INIT_VIDEO () 32)                  ; 0x20
+(macro SDL_WINDOWPOS_CENTERED () 805240832)   ; 0x2FFF0000
+(macro SDL_RENDERER_ACCELERATED () 2)
+(macro SDL_RENDERER_PRESENTVSYNC () 4)
+(macro SDL_QUIT () 256)                       ; 0x100
+(macro TECLA_ENTER () 40)
+(macro TECLA_ESCAPE () 41)
+(macro TECLA_ESPACIO () 44)
+(macro TECLA_DERECHA () 79)
+(macro TECLA_IZQUIERDA () 80)
+
+; -----------------------------------------------------------------------------
+; Constantes del juego
+
+(macro ANCHO () 640)
+(macro ALTO () 480)
+(macro FILAS () 5)
+(macro COLUMNAS () 10)
+(macro NUM_ALIENS () `(* (FILAS) (COLUMNAS)))
+(macro ANCHO_ALIEN () 32)
+(macro ALTO_ALIEN () 24)
+(macro ANCHO_JUGADOR () 40)
+(macro Y_JUGADOR () 440)
+(macro BALAS_ENEMIGAS () 3)
+
+; Recorre los indices de 0 a n - 1
+(macro repetir (contador n &rest cuerpo)
+  `(for ((variable ,contador int 0) (< ,contador ,n) (++ ,contador)) ,@cuerpo))
+
+(macro when (condicion &rest cuerpo) `(if ,condicion (block ,@cuerpo)))
+
+; -----------------------------------------------------------------------------
+; Estado
+
+(struct Alien (x int) (y int) (vivo int))
+(struct Bala (x int) (y int) (activa int))
+
+(struct Juego
+  (jugador_x int)
+  (aliens (Alien 50))
+  (vivos int)
+  (direccion int)
+  (paso int)
+  (cadencia int)
+  (animacion int)
+  (bala Bala)
+  (balas_enemigas (Bala 3))
+  (puntos int)
+  (vidas int)
+  (oleada int)
+  (fin int))
+
+(function choca int ((ax int) (ay int) (aw int) (ah int) (bx int) (by int) (bw int) (bh int))
+  (return (and (< ax (+ bx bw)) (< bx (+ ax aw)) (< ay (+ by bh)) (< by (+ ay ah)))))
+
+(function nueva_oleada void ((j (Juego *)))
+  (repetir fila (FILAS)
+    (repetir columna (COLUMNAS)
+      (variable a (Alien *) (& (aref (j aliens) (+ (* fila (COLUMNAS)) columna))))
+      (= (a x) (+ 60 (* columna 48)))
+      (= (a y) (+ 40 (* fila 36)))
+      (= (a vivo) 1)))
+  (= (j vivos) (NUM_ALIENS))
+  (= (j direccion) 1)
+  (= (j paso) 0)
+  (= (j bala activa) 0)
+  (repetir i (BALAS_ENEMIGAS)
+    (= ((aref (j balas_enemigas) i) activa) 0)))
+
+(function reiniciar void ((j (Juego *)))
+  (= (j jugador_x) (/ (- (ANCHO) (ANCHO_JUGADOR)) 2))
+  (= (j puntos) 0)
+  (= (j vidas) 3)
+  (= (j oleada) 1)
+  (= (j fin) 0)
+  (nueva_oleada j))
+
+; -----------------------------------------------------------------------------
+; Logica
+
+(function mover_aliens void ((j (Juego *)))
+  ; Cuantos menos aliens quedan y mas oleadas se superan, mas rapido van
+  (= (j cadencia) (- (+ 4 (/ (j vivos) 2)) (* 3 (j oleada))))
+  (if (< (j cadencia) 2) (= (j cadencia) 2))
+  (++ (j paso))
+  (if (< (j paso) (j cadencia)) (return))
+  (= (j paso) 0)
+  (= (j animacion) (- 1 (j animacion)))
+
+  (variable borde int 0)
+  (repetir i (NUM_ALIENS)
+    (variable a (Alien *) (& (aref (j aliens) i)))
+    (when (a vivo)
+      (variable x int (+ (a x) (* (j direccion) 10)))
+      (if (or (< x 10) (> (+ x (ANCHO_ALIEN)) (- (ANCHO) 10)))
+        (= borde 1))))
+
+  (repetir i (NUM_ALIENS)
+    (variable a (Alien *) (& (aref (j aliens) i)))
+    (if borde
+      (+= (a y) 16)
+      (+= (a x) (* (j direccion) 10)))
+    (if (and (a vivo) (>= (+ (a y) (ALTO_ALIEN)) (Y_JUGADOR)))
+      (= (j fin) 1)))
+  (if borde
+    (= (j direccion) (- (j direccion)))))
+
+(function disparo_enemigo void ((j (Juego *)))
+  (if (!= (% (rand) 30) 0) (return))
+  (variable a (Alien *) (& (aref (j aliens) (% (rand) (NUM_ALIENS)))))
+  (if (not (a vivo)) (return))
+  (repetir i (BALAS_ENEMIGAS)
+    (variable b (Bala *) (& (aref (j balas_enemigas) i)))
+    (when (not (b activa))
+      (= (b activa) 1)
+      (= (b x) (+ (a x) (/ (ANCHO_ALIEN) 2)))
+      (= (b y) (+ (a y) (ALTO_ALIEN)))
+      (return))))
+
+(function mover_bala void ((j (Juego *)))
+  (if (not (j bala activa)) (return))
+  (-= (j bala y) 10)
+  (if (< (j bala y) 0)
+    (block
+      (= (j bala activa) 0)
+      (return)))
+  (repetir i (NUM_ALIENS)
+    (variable a (Alien *) (& (aref (j aliens) i)))
+    (when (and (a vivo) (choca (j bala x) (j bala y) 4 12 (a x) (a y) (ANCHO_ALIEN) (ALTO_ALIEN)))
+      (= (a vivo) 0)
+      (-- (j vivos))
+      (+= (j puntos) (* 10 (j oleada)))
+      (= (j bala activa) 0)
+      (return))))
+
+(function mover_balas_enemigas void ((j (Juego *)))
+  (repetir i (BALAS_ENEMIGAS)
+    (variable b (Bala *) (& (aref (j balas_enemigas) i)))
+    (when (b activa)
+      (+= (b y) 5)
+      (if (> (b y) (ALTO))
+        (= (b activa) 0))
+      (when (choca (b x) (b y) 4 12 (j jugador_x) (Y_JUGADOR) (ANCHO_JUGADOR) 16)
+        (= (b activa) 0)
+        (-- (j vidas))
+        (if (<= (j vidas) 0)
+          (= (j fin) 1))))))
+
+(function actualizar void ((j (Juego *)) (teclas (uint8_t *)))
+  (when (j fin)
+    (if (aref teclas (TECLA_ENTER))
+      (reiniciar j))
+    (return))
+
+  (if (aref teclas (TECLA_IZQUIERDA))
+    (-= (j jugador_x) 5))
+  (if (aref teclas (TECLA_DERECHA))
+    (+= (j jugador_x) 5))
+  (if (< (j jugador_x) 0)
+    (= (j jugador_x) 0))
+  (if (> (j jugador_x) (- (ANCHO) (ANCHO_JUGADOR)))
+    (= (j jugador_x) (- (ANCHO) (ANCHO_JUGADOR))))
+
+  (when (and (aref teclas (TECLA_ESPACIO)) (not (j bala activa)))
+    (= (j bala activa) 1)
+    (= (j bala x) (+ (j jugador_x) (/ (ANCHO_JUGADOR) 2) -2))
+    (= (j bala y) (- (Y_JUGADOR) 12)))
+
+  (mover_bala j)
+  (mover_balas_enemigas j)
+  (mover_aliens j)
+  (disparo_enemigo j)
+
+  (when (== (j vivos) 0)
+    (++ (j oleada))
+    (nueva_oleada j)))
+
+; -----------------------------------------------------------------------------
+; Dibujo
+
+(function rectangulo void ((renderer (void *)) (x int) (y int) (w int) (h int))
+  (variable r Rect)
+  (= (r x) x)
+  (= (r y) y)
+  (= (r w) w)
+  (= (r h) h)
+  (SDL_RenderFillRect renderer (& r)))
+
+(function dibujar_alien void ((renderer (void *)) (a (Alien *)) (fila int) (animacion int))
+  (switch fila
+    (case 0 (SDL_SetRenderDrawColor renderer 255 80 200 255) (break))
+    (case 1)
+    (case 2 (SDL_SetRenderDrawColor renderer 80 200 255 255) (break))
+    (default (SDL_SetRenderDrawColor renderer 120 255 120 255)))
+  (variable x int (a x))
+  (variable y int (a y))
+  ; Cabeza, cuerpo y patas, que cambian con la animacion
+  (rectangulo renderer (+ x 8) y 16 4)
+  (rectangulo renderer (+ x 4) (+ y 4) 24 4)
+  (rectangulo renderer x (+ y 8) 32 8)
+  (if animacion
+    (block
+      (rectangulo renderer x (+ y 16) 6 8)
+      (rectangulo renderer (+ x 26) (+ y 16) 6 8))
+    (block
+      (rectangulo renderer (+ x 8) (+ y 16) 6 8)
+      (rectangulo renderer (+ x 18) (+ y 16) 6 8)))
+  ; Ojos
+  (SDL_SetRenderDrawColor renderer 0 0 30 255)
+  (rectangulo renderer (+ x 8) (+ y 9) 4 4)
+  (rectangulo renderer (+ x 20) (+ y 9) 4 4))
+
+(function dibujar void ((renderer (void *)) (j (Juego *)))
+  (SDL_SetRenderDrawColor renderer 0 0 30 255)
+  (SDL_RenderClear renderer)
+
+  (repetir i (NUM_ALIENS)
+    (variable a (Alien *) (& (aref (j aliens) i)))
+    (if (a vivo)
+      (dibujar_alien renderer a (/ i (COLUMNAS)) (j animacion))))
+
+  ; Jugador, en rojo cuando ha perdido
+  (if (j fin)
+    (SDL_SetRenderDrawColor renderer 255 60 60 255)
+    (SDL_SetRenderDrawColor renderer 60 255 60 255))
+  (rectangulo renderer (j jugador_x) (+ (Y_JUGADOR) 6) (ANCHO_JUGADOR) 10)
+  (rectangulo renderer (+ (j jugador_x) 16) (Y_JUGADOR) 8 8)
+
+  (SDL_SetRenderDrawColor renderer 255 255 255 255)
+  (if (j bala activa)
+    (rectangulo renderer (j bala x) (j bala y) 4 12))
+  (SDL_SetRenderDrawColor renderer 255 200 60 255)
+  (repetir i (BALAS_ENEMIGAS)
+    (variable b (Bala *) (& (aref (j balas_enemigas) i)))
+    (if (b activa)
+      (rectangulo renderer (b x) (b y) 4 12)))
+
+  ; Suelo
+  (SDL_SetRenderDrawColor renderer 60 255 60 255)
+  (rectangulo renderer 0 (+ (Y_JUGADOR) 20) (ANCHO) 2)
+
+  (SDL_RenderPresent renderer))
+
+(function actualizar_titulo void ((ventana (void *)) (j (Juego *)))
+  (variable titulo (char 128))
+  (if (j fin)
+    (snprintf titulo (sizeof titulo) "Marcianitos - FIN - Puntos: %d - Pulsa Enter" (j puntos))
+    (snprintf titulo (sizeof titulo) "Marcianitos - Oleada %d - Puntos: %d - Vidas: %d"
+      (j oleada) (j puntos) (j vidas)))
+  (SDL_SetWindowTitle ventana titulo))
+
+; -----------------------------------------------------------------------------
+
+(function main int ()
+  (when (!= (SDL_Init (SDL_INIT_VIDEO)) 0)
+    (fprintf stderr "SDL_Init: %s\n" (SDL_GetError))
+    (return 1))
+
+  (variable ventana (void *)
+    (SDL_CreateWindow "Marcianitos" (SDL_WINDOWPOS_CENTERED) (SDL_WINDOWPOS_CENTERED) (ANCHO) (ALTO) 0))
+  (variable renderer (void *)
+    (SDL_CreateRenderer ventana -1 (bit-or (SDL_RENDERER_ACCELERATED) (SDL_RENDERER_PRESENTVSYNC))))
+  (when (or (== ventana NULL) (== renderer NULL))
+    (fprintf stderr "SDL: %s\n" (SDL_GetError))
+    (SDL_Quit)
+    (return 1))
+
+  (srand (cast unsigned (time NULL)))
+  (variable juego Juego)
+  (reiniciar (& juego))
+
+  (variable evento Evento)
+  (variable corriendo int 1)
+  (while corriendo
+    (while (SDL_PollEvent (& evento))
+      (if (== (evento type) (SDL_QUIT))
+        (= corriendo 0)))
+    (variable teclas (uint8_t *) (SDL_GetKeyboardState NULL))
+    (if (aref teclas (TECLA_ESCAPE))
+      (= corriendo 0))
+
+    (actualizar (& juego) teclas)
+    (dibujar renderer (& juego))
+    (actualizar_titulo ventana (& juego))
+    (SDL_Delay 16))
+
+  (SDL_DestroyRenderer renderer)
+  (SDL_DestroyWindow ventana)
+  (SDL_Quit)
+  (return 0))
