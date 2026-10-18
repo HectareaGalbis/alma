@@ -95,6 +95,9 @@ public:
     /** Return the output */
     std::stringstream& get_output();
 
+    /** Return the emitted C code, starting with the includes of the standard library it uses */
+    std::string get_c_code();
+
     /** Return the declarations */
     Declarations& get_declarations();
 

@@ -106,7 +106,7 @@ static std::unique_ptr<Type> emit_call(ObjectRef<Object> callee, const std::vect
     const std::string& name = callee.as<Symbol>()->get_name();
     aassert(declarations.contains(name), "The function " << name << " is not declared");
 
-    const FunctionType* type = dynamic_cast<const FunctionType*>(declarations.get(name).getType());
+    const FunctionType* type = dynamic_cast<const FunctionType*>(declarations.use(name).getType());
     aassert(type && (type->is_function() || (type->is_pointer() && type->get_specifiers().size() == 1)),
         name << " is not a function");
 

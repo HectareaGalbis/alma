@@ -138,3 +138,20 @@ public:
 /** Check if a value of type 'from' can be used where a value of type 'to' is expected,
     following the basic C conversion rules */
 bool is_assignable(const Type& to, const Type& from);
+
+bool is_void(const Type& type);
+bool is_arithmetic(const Type& type);
+bool is_integer(const Type& type);
+/** Arithmetic types and pointers (after decaying arrays and functions) */
+bool is_scalar(const Type& type);
+
+/** Types smaller than int become int. The type must be arithmetic. */
+std::unique_ptr<Type> integer_promotion(const Type& type);
+/** Type of the result of an arithmetic operation. Both types must be arithmetic. */
+std::unique_ptr<Type> arithmetic_conversion(const Type& a, const Type& b);
+
+std::unique_ptr<Type> pointer_to(const Type& type);
+/** Type pointed by a pointer. The type must be a pointer. */
+std::unique_ptr<Type> pointee(const Type& pointer);
+/** Both types are pointers to the same type or one of them is void * */
+bool are_compatible_pointers(const Type& a, const Type& b);

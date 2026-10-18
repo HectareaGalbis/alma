@@ -42,7 +42,10 @@ std::unique_ptr<Type> Integer::emit_expression(ObjectRef<Object> self [[maybe_un
     ObjectRef<Environment> environment [[maybe_unused]],
     Declarations& declarations [[maybe_unused]], std::stringstream& output)
 {
-    output << this->value;
+    if (this->value < 0)
+        output << "(" << this->value << ")";
+    else
+        output << this->value;
     if (this->value >= INT32_MIN && this->value <= INT32_MAX)
         return std::make_unique<ValueType>("int");
     return std::make_unique<ValueType>("long");

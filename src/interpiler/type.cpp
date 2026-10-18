@@ -5,7 +5,7 @@
 #include "../object/cons.hpp"
 #include "../object/integer.hpp"
 #include "../object/symbol.hpp"
-#include <unordered_set>
+#include <unordered_map>
 
 static bool is_valid_function_argument(const Type& argument)
 {
@@ -110,6 +110,24 @@ std::string specifiers_to_string(const std::vector<Specifier>& specifiers, const
     return result;
 }
 
+/** Rank used by the usual arithmetic conversions. 0 means that the type is not arithmetic.
+    Every type with rank 1 is promoted to int. */
+static int arithmetic_rank(const std::string& name)
+{
+    static const std::unordered_map<std::string, int> ranks = {
+        { "bool", 1 }, { "_Bool", 1 }, { "char", 1 }, { "signed", 1 }, { "short", 1 }, { "int", 1 },
+        { "int8_t", 1 }, { "int16_t", 1 }, { "int32_t", 1 }, { "uint8_t", 1 }, { "uint16_t", 1 },
+        { "wchar_t", 1 }, { "sig_atomic_t", 1 },
+        { "unsigned", 2 }, { "uint32_t", 2 },
+        { "long", 3 }, { "int64_t", 3 }, { "uint64_t", 3 }, { "size_t", 3 }, { "ptrdiff_t", 3 },
+        { "intptr_t", 3 }, { "uintptr_t", 3 }, { "time_t", 3 }, { "clock_t", 3 },
+        { "float", 4 },
+        { "double", 5 }
+    };
+    auto it = ranks.find(name);
+    return it == ranks.end() ? 0 : it->second;
+}
+
 // -----------------------------------------------------------------------------
 
 ValueType::ValueType(const std::string& _name, const std::vector<Specifier>& _specifiers)
@@ -196,13 +214,7 @@ bool ValueType::is_void_pointer() const
 
 bool ValueType::is_arithmetic() const
 {
-    static const std::unordered_set<std::string> arithmetic_types = {
-        "char", "short", "int", "long", "float", "double", "bool", "_Bool",
-        "signed", "unsigned", "size_t", "ptrdiff_t",
-        "int8_t", "int16_t", "int32_t", "int64_t",
-        "uint8_t", "uint16_t", "uint32_t", "uint64_t"
-    };
-    return specifiers.empty() && arithmetic_types.contains(name);
+    return specifiers.empty() && arithmetic_rank(name) > 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -352,4 +364,94 @@ bool is_assignable(const Type& to, const Type& from)
     }
 
     return false;
+}
+
+// -----------------------------------------------------------------------------
+
+static const ValueType* as_value_type(const Type& type)
+{
+    return dynamic_cast<const ValueType*>(&type);
+}
+
+bool is_void(const Type& type)
+{
+    const ValueType* value = as_value_type(type);
+    return value && value->is_void();
+}
+
+bool is_arithmetic(const Type& type)
+{
+    const ValueType* value = as_value_type(type);
+    return value && value->is_arithmetic();
+}
+
+bool is_integer(const Type& type)
+{
+    const ValueType* value = as_value_type(type);
+    return value && value->is_arithmetic() && value->get_name() != "float" && value->get_name() != "double";
+}
+
+bool is_scalar(const Type& type)
+{
+    std::unique_ptr<Type> decayed = type.decay();
+    return is_arithmetic(*decayed) || decayed->is_pointer();
+}
+
+std::unique_ptr<Type> integer_promotion(const Type& type)
+{
+    const ValueType* value = as_value_type(type);
+    if (arithmetic_rank(value->get_name()) == 1)
+        return std::make_unique<ValueType>("int");
+    return type.clone();
+}
+
+std::unique_ptr<Type> arithmetic_conversion(const Type& a, const Type& b)
+{
+    const ValueType* value_a = as_value_type(a);
+    const ValueType* value_b = as_value_type(b);
+    const ValueType* higher = arithmetic_rank(value_a->get_name()) >= arithmetic_rank(value_b->get_name())
+        ? value_a
+        : value_b;
+    return integer_promotion(*higher);
+}
+
+std::unique_ptr<Type> pointer_to(const Type& type)
+{
+    if (const ValueType* value = as_value_type(type)) {
+        std::vector<Specifier> specifiers = value->get_specifiers();
+        specifiers.push_back(Pointer {});
+        return std::make_unique<ValueType>(value->get_name(), specifiers);
+    }
+    const FunctionType& function = static_cast<const FunctionType&>(type);
+    std::vector<Specifier> specifiers = function.get_specifiers();
+    specifiers.push_back(Pointer {});
+    return std::make_unique<FunctionType>(function.get_result().clone(), function.get_arguments(),
+        function.is_variadic(), specifiers);
+}
+
+std::unique_ptr<Type> pointee(const Type& pointer)
+{
+    if (const ValueType* value = as_value_type(pointer)) {
+        std::vector<Specifier> specifiers = value->get_specifiers();
+        specifiers.pop_back();
+        return std::make_unique<ValueType>(value->get_name(), specifiers);
+    }
+    const FunctionType& function = static_cast<const FunctionType&>(pointer);
+    std::vector<Specifier> specifiers = function.get_specifiers();
+    specifiers.pop_back();
+    return std::make_unique<FunctionType>(function.get_result().clone(), function.get_arguments(),
+        function.is_variadic(), specifiers);
+}
+
+bool are_compatible_pointers(const Type& a, const Type& b)
+{
+    std::unique_ptr<Type> decayed_a = a.decay();
+    std::unique_ptr<Type> decayed_b = b.decay();
+    if (!decayed_a->is_pointer() || !decayed_b->is_pointer())
+        return false;
+    if (*decayed_a == *decayed_b)
+        return true;
+    const ValueType* value_a = as_value_type(*decayed_a);
+    const ValueType* value_b = as_value_type(*decayed_b);
+    return (value_a && value_a->is_void_pointer()) || (value_b && value_b->is_void_pointer());
 }

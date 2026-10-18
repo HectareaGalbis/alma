@@ -45,8 +45,9 @@ public:
     virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 };
 
-/** (declare printf (int ((char *) &rest))) -> int printf(char *, ...);
-    (declare counter int) -> extern int counter; */
+/** (declare f (int ((char *) &rest))) -> int f(char *, ...);
+    (declare counter int) -> extern int counter;
+    Redeclaring something of the C standard library writes nothing. */
 class EmitterDeclare : public Emitter {
 public:
     EmitterDeclare();

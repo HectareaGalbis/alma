@@ -193,5 +193,5 @@ std::unique_ptr<Type> Symbol::emit_expression(ObjectRef<Object> self [[maybe_unu
 {
     aassert(declarations.contains(this->name), "'" << this->name << "' is not declared");
     output << this->name;
-    return declarations.get(this->name).getType()->clone();
+    return declarations.use(this->name).getType()->clone();
 }

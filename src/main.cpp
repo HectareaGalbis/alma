@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
             std::cerr << "Cannot open the output file " << *output << std::endl;
             return 1;
         }
-        file << Alma::alma.get_output().str();
+        file << Alma::alma.get_c_code();
     } catch (std::runtime_error& e) {
         std::string message = e.what();
         message.erase(message.find_last_not_of('\n') + 1);

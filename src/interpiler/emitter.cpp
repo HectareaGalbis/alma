@@ -90,8 +90,16 @@ void EmitterDeclare::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
     aassert(arg_list.size() == 2, "declare expects a name and a type but received " << arg_list.size() << " arguments");
     std::string declaration_name = symbol_name(arg_list[0], "the name of a declaration");
     std::unique_ptr<Type> type = Type::parse_object(arg_list[1]);
-    declarations.add(Declaration(declaration_name, type));
+    Declaration declaration(declaration_name, type);
 
+    // Redeclaring a function or variable of the standard library only checks it
+    bool standard = declarations.contains(declaration_name) && declarations.get(declaration_name).getHeader()
+        && declarations.get(declaration_name) == declaration;
+    declarations.add(declaration);
+    if (standard)
+        return;
+
+    declarations.use_type(*type);
     if (!type->is_function())
         output << "extern ";
     output << type->to_string(declaration_name) << ";\n";
@@ -139,6 +147,7 @@ void EmitterFunction::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
         result, parameter_types, false, std::vector<Specifier> {});
     Declaration function(function_name, function_type, true);
     declarations.add(function);
+    declarations.use_type(*function_type);
 
     Declarations scope = declarations.function_scope(function);
     for (size_t i = 0; i < parameter_names.size(); i++)

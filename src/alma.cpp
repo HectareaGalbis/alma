@@ -2,6 +2,8 @@
 
 #include "alma.hpp"
 #include "debug.hpp"
+#include "interpiler/operators.hpp"
+#include "interpiler/standard.hpp"
 #include "interfaces/applicable.hpp"
 #include "interfaces/emittable.hpp"
 #include "interfaces/expandable.hpp"
@@ -58,6 +60,8 @@ Alma::Alma()
     this->intern_symbols();
     this->intern_functions();
     intern_emitters();
+    intern_operators();
+    declare_standard(this->declarations);
 }
 
 ObjectRef<Object> Alma::expand(ObjectRef<Object> obj, ObjectRef<Environment> _environment)
@@ -154,7 +158,7 @@ static Emittable& as_emittable(Alma& alma, ObjectRef<Object> obj)
 void Alma::emit(ObjectRef<Object> obj)
 {
     // Emit on copies so that a failed emission leaves no partial output or declarations
-    Declarations _declarations = this->declarations;
+    Declarations _declarations = this->declarations.deep_copy();
     std::stringstream _output;
     try {
         this->emit_top_level(obj, this->environment, _declarations, _output);
@@ -187,6 +191,17 @@ std::unique_ptr<Type> Alma::emit_expression(ObjectRef<Object> obj, ObjectRef<Env
 ObjectRef<Package> Alma::get_current_package()
 {
     return this->current_package;
+}
+
+std::string Alma::get_c_code()
+{
+    std::stringstream code;
+    for (const std::string& header : this->declarations.get_headers())
+        code << "#include <" << header << ">\n";
+    if (!this->declarations.get_headers().empty())
+        code << "\n";
+    code << this->output.str();
+    return code.str();
 }
 
 std::stringstream& Alma::get_output()
