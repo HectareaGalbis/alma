@@ -1,0 +1,44 @@
+; Variables y operadores.
+;
+; Cada operacion se escribe entre parentesis en el C generado, asi que la
+; precedencia de C no importa. Los nombres que el lector de alma no puede leer
+; (|, ^, ~, &&, ||, !) tienen nombres propios: bit-or, bit-xor, bit-not, and, or, not.
+;
+;   ./alma -o operadores examples/02_operadores.alma && ./operadores
+
+(function main int ()
+  ; Aritmetica: + - * / % aceptan varios argumentos; + y - tambien son unarios
+  (variable a int 17)
+  (variable b int 5)
+  (printf "%d + %d = %d\n" a b (+ a b))
+  (printf "%d - %d - 1 = %d\n" a b (- a b 1))
+  (printf "%d * %d * 2 = %d\n" a b (* a b 2))
+  (printf "%d / %d = %d, resto %d\n" a b (/ a b) (% a b))
+  (printf "-a = %d\n" (- a))
+
+  ; Comparaciones y logica
+  (printf "a > b: %d, a == b: %d, a != b: %d\n" (> a b) (== a b) (!= a b))
+  (printf "and: %d, or: %d, not: %d\n" (and (> a 0) (> b 0)) (or (< a 0) (< b 0)) (not a))
+
+  ; Operadores de bits
+  (printf "12 & 10 = %d, 12 | 10 = %d, 12 ^ 10 = %d, ~0 = %d\n"
+    (bit-and 12 10) (bit-or 12 10) (bit-xor 12 10) (bit-not 0))
+  (printf "1 << 4 = %d, 256 >> 2 = %d\n" (<< 1 4) (>> 256 2))
+
+  ; Asignaciones, compuestas e incrementos
+  (variable c int 0)
+  (= c 10)
+  (+= c 5)
+  (*= c 2)
+  (-= c 1)
+  (bit-or= c 1)
+  (post++ c)
+  (-- c)
+  (printf "c = %d\n" c)
+
+  ; Ternario, cast, sizeof y coma
+  (printf "maximo: %d\n" (? (> a b) a b))
+  (printf "17 / 5 en coma flotante: %f\n" (/ (cast double a) b))
+  (printf "sizeof(int) = %zu, sizeof(a) = %zu\n" (sizeof int) (sizeof a))
+  (printf "coma: %d\n" (comma (= c 1) (+ c 1)))
+  (return 0))

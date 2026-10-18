@@ -1,0 +1,65 @@
+; Structs y unions.
+;
+; (struct Nombre (miembro tipo)...) define el struct y un typedef, asi que el
+; nombre se usa directamente como tipo. (s miembro) accede a un miembro; si s es
+; un puntero se usa -> automaticamente. Varios miembros acceden a structs anidados.
+;
+;   ./alma -o structs examples/06_structs_y_unions.alma && ./structs
+
+(struct Punto (x int) (y int))
+(struct Rectangulo (origen Punto) (tamano Punto))
+
+(function area int ((r (Rectangulo *)))
+  (return (* (r tamano x) (r tamano y))))
+
+; Lista enlazada: un struct que se refiere a si mismo con un puntero
+(struct Nodo (valor int) (siguiente (Nodo *)))
+
+(function sumar_lista int ((nodo (Nodo *)))
+  (variable total int 0)
+  (while (!= nodo NULL)
+    (+= total (nodo valor))
+    (= nodo (nodo siguiente)))
+  (return total))
+
+; Union con una etiqueta que dice que miembro es valido
+(union Valor (entero int) (real double) (texto (char *)))
+(struct Dato (tipo int) (valor Valor))
+
+(function mostrar void ((d (Dato *)))
+  (switch (d tipo)
+    (case 0 (printf "entero %d\n" (d valor entero)) (break))
+    (case 1 (printf "real %f\n" (d valor real)) (break))
+    (default (printf "texto %s\n" (d valor texto)))))
+
+(function main int ()
+  (variable r Rectangulo)
+  (= (r origen x) 0)
+  (= (r origen y) 0)
+  (= (r tamano x) 3)
+  (= (r tamano y) 4)
+  (printf "area: %d\n" (area (& r)))
+
+  (variable a Nodo)
+  (variable b Nodo)
+  (variable c Nodo)
+  (= (a valor) 1)
+  (= (a siguiente) (& b))
+  (= (b valor) 2)
+  (= (b siguiente) (& c))
+  (= (c valor) 3)
+  (= (c siguiente) NULL)
+  (printf "suma de la lista: %d\n" (sumar_lista (& a)))
+
+  (variable d Dato)
+  (= (d tipo) 0)
+  (= (d valor entero) 42)
+  (mostrar (& d))
+  (= (d tipo) 1)
+  (= (d valor real) (/ (cast double 5) 2))   ; no hay literales con decimales
+  (mostrar (& d))
+  (= (d tipo) 2)
+  (= (d valor texto) "hola")
+  (mostrar (& d))
+  (printf "sizeof(Valor) = %zu\n" (sizeof Valor))
+  (return 0))

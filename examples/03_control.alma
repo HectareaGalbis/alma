@@ -1,0 +1,58 @@
+; Estructuras de control: if, while, do-while, for, switch, break, continue y goto.
+;
+; Las ramas de if son una sola sentencia; (block ...) agrupa varias.
+; Cada parte de la cabecera de for puede ser ().
+;
+;   ./alma -o control examples/03_control.alma && ./control
+
+(function signo (char *) ((x int))
+  (if (< x 0)
+    (return "negativo")
+    (if (== x 0)              ; un if en el else se escribe como else if
+      (return "cero")
+      (return "positivo"))))
+
+(function dia (char *) ((n int))
+  (switch n
+    (case 0 (return "domingo"))
+    (case 6 (return "sabado"))
+    (case 1)                  ; sin sentencias: continua en el siguiente case
+    (case 2)
+    (case 3)
+    (case 4)
+    (case 5 (return "laborable"))
+    (default (return "no existe"))))
+
+(function main int ()
+  (printf "%s %s %s\n" (signo -4) (signo 0) (signo 9))
+
+  ; while
+  (variable n int 3)
+  (while (> n 0)
+    (printf "while %d\n" n)
+    (-- n))
+
+  ; do-while: el cuerpo se ejecuta al menos una vez
+  (do-while (> n 0)
+    (printf "do-while se ejecuta una vez\n"))
+
+  ; for con variable propia, continue y break
+  (for ((variable i int 0) (< i 10) (++ i))
+    (if (== (% i 2) 0) (continue))
+    (if (> i 7) (break))
+    (printf "impar %d, %s\n" i (dia i)))
+
+  ; for sin cabecera y goto para salir de dos bucles a la vez
+  (variable vueltas int 0)
+  (for (() () ())
+    (while 1
+      (++ vueltas)
+      (if (== vueltas 3) (goto fuera))))
+  (label fuera)
+  (printf "salgo tras %d vueltas\n" vueltas)
+
+  (if (> vueltas 0)
+    (block
+      (printf "un bloque con\n")
+      (printf "varias sentencias\n")))
+  (return 0))

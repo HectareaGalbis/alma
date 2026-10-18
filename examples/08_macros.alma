@@ -1,0 +1,38 @@
+; Macros del preprocesador.
+;
+; (macro nombre (parametros) cuerpo...) define una macro cuyo cuerpo es codigo de
+; alma que devuelve el codigo C que la sustituye. Funciona como el preprocesador
+; de C: los argumentos se expanden antes, el resultado se vuelve a expandir y una
+; macro no se expande dentro de su propia expansion.
+;
+;   ./alma -o macros examples/08_macros.alma && ./macros
+
+(macro cuadrado (x) `(* ,x ,x))
+(macro maximo (a b) `(? (> ,a ,b) ,a ,b))
+
+; Nuevas estructuras de control a partir de las que ya existen
+(macro when (condicion &rest cuerpo) `(if ,condicion (block ,@cuerpo)))
+(macro unless (condicion &rest cuerpo) `(when (not ,condicion) ,@cuerpo))
+(macro repetir (contador veces &rest cuerpo)
+  `(for ((variable ,contador int 0) (< ,contador ,veces) (++ ,contador)) ,@cuerpo))
+
+; Una macro con el nombre de una funcion de C tiene preferencia, pero dentro de
+; su propia expansion el nombre vuelve a ser la funcion de C
+(macro puts (texto) `(printf "[log] %s\n" ,texto))
+
+; Una macro que define funciones. Para usarla fuera de una funcion hay que
+; pasar por emit, porque function es la que ya es una macro de alma
+(macro getter (nombre tipo valor) `(function ,nombre ,tipo () (return ,valor)))
+(emit '(getter respuesta int (cuadrado 7)))
+
+; El cuerpo es codigo de alma: se calcula al expandir
+(macro sumar-al-expandir (a b) (+ a b))
+
+(function main int ()
+  (printf "cuadrado(cuadrado(3)) = %d\n" (cuadrado (cuadrado 3)))
+  (printf "maximo(4, 9) = %d\n" (maximo 4 9))
+  (printf "respuesta() = %d, sumar-al-expandir = %d\n" (respuesta) (sumar-al-expandir 40 2))
+  (repetir i 3
+    (when (== i 1) (puts "i vale 1"))
+    (unless (== i 1) (printf "i = %d\n" i)))
+  (return 0))

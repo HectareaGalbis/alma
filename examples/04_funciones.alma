@@ -1,0 +1,50 @@
+; Funciones: definiciones, declaraciones, recursion, variables globales y
+; punteros a funcion.
+;
+; Sin cuerpo, function solo declara la funcion; sin valor, variable solo declara
+; la variable (extern). Las variables globales se inicializan con constantes.
+;
+;   ./alma -o funciones examples/04_funciones.alma && ./funciones
+
+; Declaracion: se puede llamar antes de definirla
+(function fibonacci long ((n int)))
+
+(variable llamadas int 0)
+
+; Funcion con cuerpo vacio
+(function nada void () ())
+
+(function factorial long ((n int))
+  (++ llamadas)
+  (if (<= n 1)
+    (return 1))
+  (return (* n (factorial (- n 1)))))
+
+(function fibonacci long ((n int))
+  (variable a long 0)
+  (variable b long 1)
+  (for ((variable i int 0) (< i n) (++ i))
+    (variable siguiente long (+ a b))
+    (= a b)
+    (= b siguiente))
+  (return a))
+
+(function doble int ((x int)) (return (* 2 x)))
+(function triple int ((x int)) (return (* 3 x)))
+
+; Una funcion que recibe un puntero a funcion
+(function aplicar int ((f (int (int) *)) (x int))
+  (return (f x)))
+
+; Un puntero a funcion global, inicializado con una funcion (es una constante)
+(variable operacion (int (int) *) doble)
+
+(function main int ()
+  (nada)
+  (variable resultado long (factorial 10))
+  (printf "10! = %ld (%d llamadas)\n" resultado llamadas)
+  (printf "fibonacci(20) = %ld\n" (fibonacci 20))
+  (printf "aplicar doble 7 = %d\n" (aplicar operacion 7))
+  (= operacion triple)
+  (printf "aplicar triple 7 = %d\n" (aplicar operacion 7))
+  (return 0))

@@ -1,0 +1,10 @@
+; Hola mundo.
+;
+; function define una funcion de C. Las funciones de la biblioteca estandar
+; (puts, printf...) ya estan declaradas, y el #include necesario se anade solo.
+;
+;   ./alma -o hola examples/01_hola_mundo.alma && ./hola
+
+(function main int ()
+  (puts "Hola mundo")
+  (return 0))

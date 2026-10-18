@@ -1,0 +1,31 @@
+; alma y C juntos.
+;
+; Todo lo que no es function, variable, struct, union o macro se ejecuta como
+; codigo de alma. emit es una funcion que recibe codigo C como datos, asi que
+; un programa de alma puede generar el C que quiera.
+;
+;   ./alma -o generar examples/09_generar_codigo.alma && ./generar
+
+; Funciones y macros de alma, que se ejecutan al compilar
+(defun suma3 (a b c) (+ a b c))
+(print (suma3 1 2 3))
+
+; Genera una funcion de C que devuelve una constante
+(defun constante (nombre valor)
+  (emit `(function ,nombre int () (return ,valor))))
+
+; Recorre una lista de (nombre valor) generando una funcion por cada uno
+(defun constantes (lista)
+  (if lista
+    (progn
+      (constante (car (car lista)) (car (cdr (car lista))))
+      (constantes (cdr lista)))))
+
+(constantes '((uno 1) (dos 2) (tres 3)))
+
+; El codigo tambien se puede construir con list
+(emit (list 'variable 'total 'int (suma3 10 20 30)))
+
+(function main int ()
+  (printf "%d %d %d, total %d\n" (uno) (dos) (tres) total)
+  (return 0))

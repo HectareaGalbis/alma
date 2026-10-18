@@ -1,0 +1,43 @@
+; Biblioteca estandar de C.
+;
+; Las funciones, variables y macros de la biblioteca estandar ya estan
+; declaradas. Solo se anaden los #include de lo que se usa.
+;
+;   ./alma -o estandar examples/07_biblioteca_estandar.alma -lm && ./estandar
+
+(struct Persona (nombre (char 32)) (edad int))
+
+(function main int ()
+  ; string.h y ctype.h
+  (variable texto (char 32))
+  (strcpy texto "alma")
+  (strcat texto " y c")
+  (for ((variable i int 0) (< i (cast int (strlen texto))) (++ i))
+    (= (aref texto i) (cast char (toupper (aref texto i)))))
+  (printf "%s (%zu letras)\n" texto (strlen texto))
+
+  ; stdlib.h: memoria dinamica
+  (variable n int 5)
+  (variable cuadrados (int *) (malloc (* n (sizeof int))))
+  (if (== cuadrados NULL)
+    (return EXIT_FAILURE))
+  (for ((variable i int 0) (< i n) (++ i))
+    (= (aref cuadrados i) (* i i)))
+  (printf "cuadrados[4] = %d\n" (aref cuadrados 4))
+  (free cuadrados)
+
+  (variable p (Persona *) (malloc (sizeof Persona)))
+  (strcpy (p nombre) "Ada")
+  (= (p edad) 36)
+  (printf "%s tiene %d anos\n" (p nombre) (p edad))
+  (free p)
+
+  ; math.h
+  (printf "sqrt(2) = %f, pow(2, 10) = %f, abs(-7) = %d\n" (sqrt 2) (pow 2 10) (abs -7))
+
+  ; stdio.h: escribir en stderr y leer de una cadena
+  (variable valor int 0)
+  (sscanf "123" "%d" (& valor))
+  (fprintf stderr "esto va a stderr\n")
+  (printf "leido: %d, INT_MAX = %d\n" valor INT_MAX)
+  (return EXIT_SUCCESS))
