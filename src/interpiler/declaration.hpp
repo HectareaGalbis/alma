@@ -14,10 +14,11 @@ private:
     std::unique_ptr<Type> type;
     bool defined;
     std::optional<std::string> header;
+    bool constant;
 
 public:
     Declaration(const std::string& name, const std::unique_ptr<Type>& type, bool defined = false,
-        const std::optional<std::string>& header = std::nullopt);
+        const std::optional<std::string>& header = std::nullopt, bool constant = false);
     Declaration(const Declaration& other);
     Declaration& operator=(const Declaration& other);
     Declaration(Declaration&& other) noexcept;
@@ -28,6 +29,8 @@ public:
     bool isDefined() const;
     /** Header of the C standard library where it is declared, if any */
     const std::optional<std::string>& getHeader() const;
+    /** A constant, like the macros of the standard library (EOF, INT_MAX...) */
+    bool isConstant() const;
 
     void define();
 

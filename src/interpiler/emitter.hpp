@@ -45,23 +45,29 @@ public:
     virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 };
 
-/** (declare f (int ((char *) &rest))) -> int f(char *, ...);
-    (declare counter int) -> extern int counter;
-    Redeclaring something of the C standard library writes nothing. */
-class EmitterDeclare : public Emitter {
-public:
-    EmitterDeclare();
-
-    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
-        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
-};
-
-/** (function main int ((argc int) (argv (char * *))) body...) */
+/** (function main int ((argc int) (argv (char * *))) body...) defines a function.
+    (function f void () ()) defines a function with an empty body.
+    Without body, it only declares it: (function f int ((format (char *)) &rest)) -> int f(char *format, ...);
+    Redeclaring a function of the C standard library writes nothing. */
 class EmitterFunction : public Emitter {
 public:
     EmitterFunction();
 
     void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** At the top level, (variable counter int 0) defines a global variable: int counter = 0;
+    The value must be a constant. Without value, it only declares it: (variable counter int) -> extern int counter;
+    Redeclaring a variable of the C standard library writes nothing.
+    Inside a function it defines a local variable, with or without value: int counter = 0; or int counter; */
+class EmitterVariable : public Emitter {
+public:
+    EmitterVariable();
+
+    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
         ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
 };
 

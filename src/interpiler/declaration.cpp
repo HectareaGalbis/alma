@@ -4,11 +4,12 @@
 #include "standard.hpp"
 
 Declaration::Declaration(const std::string& _name, const std::unique_ptr<Type>& _type, bool _defined,
-    const std::optional<std::string>& _header)
+    const std::optional<std::string>& _header, bool _constant)
     : name(_name)
     , type(_type->clone())
     , defined(_defined)
     , header(_header)
+    , constant(_constant)
 {
 }
 
@@ -17,6 +18,7 @@ Declaration::Declaration(const Declaration& other)
     , type(other.type->clone())
     , defined(other.defined)
     , header(other.header)
+    , constant(other.constant)
 {
 }
 
@@ -27,6 +29,7 @@ Declaration& Declaration::operator=(const Declaration& other)
         type = other.type->clone();
         defined = other.defined;
         header = other.header;
+        constant = other.constant;
     }
     return *this;
 }
@@ -42,6 +45,8 @@ const Type* Declaration::getType() const { return type.get(); }
 bool Declaration::isDefined() const { return defined; }
 
 const std::optional<std::string>& Declaration::getHeader() const { return header; }
+
+bool Declaration::isConstant() const { return constant; }
 
 void Declaration::define() { defined = true; }
 

@@ -6,6 +6,7 @@
 #include "declaration.hpp"
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 /*
@@ -302,10 +303,21 @@ static std::unique_ptr<Type> parse_standard_type(const std::string& text)
     return Type::parse_object(*obj);
 }
 
+/** Variables of the standard library that are not constants */
+static bool is_standard_variable(const std::string& name)
+{
+    static const std::unordered_set<std::string> variables = {
+        "errno", "stdin", "stdout", "stderr", "MB_CUR_MAX"
+    };
+    return variables.contains(name);
+}
+
 static void declare(Declarations& declarations, const std::string& header, const std::string& name,
     const std::string& type)
 {
-    declarations.add(Declaration(name, parse_standard_type(type), false, header));
+    std::unique_ptr<Type> parsed = parse_standard_type(type);
+    bool constant = !parsed->is_function() && !is_standard_variable(name);
+    declarations.add(Declaration(name, parsed, false, header, constant));
 }
 
 void declare_standard(Declarations& declarations)
