@@ -73,7 +73,7 @@ void Records::add(const Record& record)
 
     if (record.isDefined()) {
         aassert(!it->second.isDefined(), "Redefinition of '" << name << "'");
-        it->second.define();
+        it->second = record;
     }
 }
 

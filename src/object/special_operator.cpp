@@ -15,7 +15,7 @@ template <typename T>
 void intern_special_operator(const std::string& name)
 {
     ObjectRef<Symbol> sym = Alma::alma.intern_alma_symbol(name);
-    sym->set_value(Alma::alma.make<T>());
+    sym->push_value(Alma::alma.make<T>());
 }
 
 void intern_special_operators()
@@ -218,11 +218,13 @@ ObjectRef<Object> gamma::eval_body(
 {
     massert(arg_list.size() >= 1, "Expected at least one argument.");
 
-    massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
-
-    std::vector<ObjectRef<Object>> param_list = arg_list[0].as<Cons>()->to_list().first;
-    for (const ObjectRef<Object>& param : param_list)
-        massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
+    std::vector<ObjectRef<Object>> param_list;
+    if (!Alma::alma.null(arg_list[0])) {
+        massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
+        param_list = arg_list[0].as<Cons>()->to_list().first;
+        for (const ObjectRef<Object>& param : param_list)
+            massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
+    }
 
     std::vector<ObjectRef<Object>> body;
     for (size_t i = 1; i < arg_list.size(); i++)
@@ -247,14 +249,4 @@ ObjectRef<Object> branch::eval_body(
         else
             return Alma::alma.make<Nil>();
     }
-}
-
-// --------------------------------------------------------------------------------
-
-ObjectRef<Object> Emit::eval_body(
-    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
-{
-    for (const ObjectRef<Object>& arg : arg_list)
-        Alma::alma.emit(arg);
-    return Alma::alma.boolean(false);
 }

@@ -3,6 +3,7 @@
 #include "alma.hpp"
 #include "debug.hpp"
 #include "interpiler/operators.hpp"
+#include "interpiler/preprocessor.hpp"
 #include "interpiler/standard.hpp"
 #include "interfaces/applicable.hpp"
 #include "interfaces/emittable.hpp"
@@ -11,6 +12,7 @@
 #include "object/cons.hpp"
 #include "object/environment.hpp"
 #include "object/function.hpp"
+#include "object/macro.hpp"
 #include "object/object.hpp"
 #include "object/package.hpp"
 #include "object/special_operator.hpp"
@@ -35,6 +37,7 @@ void Alma::intern_functions()
     intern_function(Eq, "eq");
     intern_function(Eval, "eval");
     intern_function(Emit, "emit");
+    intern_function(List, "list");
 }
 
 static void intern_selfevaluating_symbol(Alma& alma, const std::string& name)
@@ -59,6 +62,9 @@ Alma::Alma()
 {
     this->intern_symbols();
     this->intern_functions();
+    intern_special_operators();
+    intern_preprocessor();
+    intern_macros();
     intern_emitters();
     intern_operators();
     declare_standard(this->declarations);
@@ -121,6 +127,9 @@ ObjectRef<Object> Alma::transform(
     ObjectRef<Cons> args,
     ObjectRef<Environment> _environment)
 {
+    // A call without arguments receives nil instead of a list
+    if (this->null(args))
+        return this->transform(obj, std::vector<ObjectRef<Object>> {}, _environment);
     auto [arg_list, arg_rest] = args->to_list();
     aassert(!arg_rest, "Cannot transform a non proper list of arguments " << args);
     return this->transform(obj, arg_list, _environment);
@@ -142,6 +151,9 @@ ObjectRef<Object> Alma::apply(
     ObjectRef<Cons> args,
     ObjectRef<Environment> _environment)
 {
+    // A call without arguments receives nil instead of a list
+    if (this->null(args))
+        return this->apply(obj, std::vector<ObjectRef<Object>> {}, _environment);
     auto [arg_list, arg_rest] = args->to_list();
     aassert(!arg_rest, "Cannot apply a non proper list of arguments " << args);
     return this->apply(obj, arg_list, _environment);
@@ -161,7 +173,8 @@ void Alma::emit(ObjectRef<Object> obj)
     Declarations _declarations = this->declarations.deep_copy();
     std::stringstream _output;
     try {
-        this->emit_top_level(obj, this->environment, _declarations, _output);
+        ObjectRef<Object> expanded = expand_macros(obj);
+        this->emit_top_level(expanded, this->environment, _declarations, _output);
     } catch (const std::runtime_error& e) {
         athrow("Error emitting " << this->to_string(obj) << "\n"
                                  << e.what());
@@ -241,7 +254,10 @@ ObjectRef<Object> Alma::symbol_value(ObjectRef<Symbol> symbol)
 
 ObjectRef<Object> Alma::set_symbol_value(ObjectRef<Symbol> symbol, ObjectRef<Object> value)
 {
-    symbol->set_value(value);
+    if (symbol->has_value())
+        symbol->set_value(value);
+    else
+        symbol->push_value(value);
     return value;
 }
 

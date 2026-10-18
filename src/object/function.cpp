@@ -103,3 +103,25 @@ ObjectRef<Object> Eval::eval_body(
 
     return Alma::alma.eval(arg_list[0], environment);
 }
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> List::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    if (arg_list.empty())
+        return Alma::alma.intern_alma_symbol("nil");
+    return Alma::alma.make<Cons>(arg_list);
+}
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> Emit::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    for (const ObjectRef<Object>& arg : arg_list)
+        Alma::alma.emit(arg);
+    return Alma::alma.boolean(false);
+}

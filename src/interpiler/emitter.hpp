@@ -71,6 +71,95 @@ public:
         ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
 };
 
+/** (struct Point) declares a struct: typedef struct Point Point;
+    (struct Point (x int) (y int)) defines it: struct Point { int x; int y; };
+    The typedef is written the first time, so the name of the struct can be used as a type.
+    The members are accessed with (point x), or (pointer x) for pointers to a struct.
+    Unions work the same way with (union Value (i int) (f float)). */
+class EmitterStruct : public Emitter {
+private:
+    bool union_record;
+
+public:
+    EmitterStruct(bool union_record);
+
+    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (block statement...) -> { statement... } */
+class EmitterBlock : public Emitter {
+public:
+    EmitterBlock();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (if condition then [else]). The branches are one statement; (block ...) groups several. */
+class EmitterIf : public Emitter {
+public:
+    EmitterIf();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (while condition statement...) */
+class EmitterWhile : public Emitter {
+public:
+    EmitterWhile();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (for (init condition step) statement...). Each part can be (); init can be (variable ...) */
+class EmitterFor : public Emitter {
+public:
+    EmitterFor();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (do-while condition statement...) -> do { statement... } while (condition); */
+class EmitterDoWhile : public Emitter {
+public:
+    EmitterDoWhile();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (switch expression (case constant statement...) ... (default statement...))
+    As in C, the execution continues with the next case unless there is a (break). */
+class EmitterSwitch : public Emitter {
+public:
+    EmitterSwitch();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (break) and (continue) */
+class EmitterJump : public Emitter {
+public:
+    EmitterJump(const std::string& name);
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** (label name) -> name:; and (goto name) -> goto name; */
+class EmitterLabel : public Emitter {
+public:
+    EmitterLabel(const std::string& name);
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
 /** (return) or (return expression) */
 class EmitterReturn : public Emitter {
 public:

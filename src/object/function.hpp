@@ -28,3 +28,5 @@ declare_function(Car);
 declare_function(Cdr);
 declare_function(Eq);
 declare_function(Eval);
+declare_function(List);
+declare_function(Emit);

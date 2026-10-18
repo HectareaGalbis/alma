@@ -78,6 +78,7 @@ void Symbol::set_property(ObjectRef<Symbol> property, ObjectRef<Object> value)
     auto it = this->properties.find(property);
     if (it != this->properties.end() && it->second.size() > 0) {
         it->second.back() = value;
+        return;
     }
     mthrow("No property " << property->get_name() << " found for the symbol " << this->name);
 }
@@ -95,6 +96,7 @@ void Symbol::pop_property(ObjectRef<Symbol> property)
     auto it = this->properties.find(property);
     if (it != this->properties.end() && it->second.size() > 0) {
         it->second.pop_back();
+        return;
     }
     mthrow("No property " << property->get_name() << " found for the symbol " << this->name);
 }

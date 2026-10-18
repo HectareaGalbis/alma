@@ -1,66 +1,100 @@
-
 #include "macro.hpp"
-#include "package.hpp"
+#include "alma.hpp"
+#include "cons.hpp"
+#include "debug.hpp"
+#include "symbol.hpp"
 
-#define intern_macro(name, sym_name)                                                       \
-    std::shared_ptr<Symbol>& name##_macro = Package::almaPackage->intern_symbol(sym_name); \
-    name##_macro->function = std::make_shared<name>(sym_name);
+template <typename T>
+static void intern_macro(const std::string& name)
+{
+    ObjectRef<Symbol> sym = Alma::alma.intern_alma_symbol(name);
+    sym->push_value(Alma::alma.make<T>());
+}
 
 void intern_macros()
 {
-    intern_macro(defun, "defun");
-    intern_macro(defmacro, "defmacro");
+    intern_macro<defun>("defun");
+    intern_macro<defmacro>("defmacro");
+    intern_macro<emit_function>("function");
+    intern_macro<emit_macro>("macro");
+    intern_macro<emit_variable>("variable");
+    intern_macro<emit_struct>("struct");
+    intern_macro<emit_union>("union");
 }
 
 // --------------------------------------------------------------------------------
 
-static std::shared_ptr<Object> define_operation(const std::string& gen,
-    const std::vector<std::shared_ptr<Object>>& args)
+/** (defun name (params) body...) -> (set-symbol-value (quote name) (lambda (params) body...)) */
+static ObjectRef<Object> define_operation(const std::string& gen, const std::vector<ObjectRef<Object>>& arg_list)
 {
-    if (args.size() < 2)
-        throw std::runtime_error("Expected at least the name and list of arguments");
+    Alma& alma = Alma::alma;
 
-    std::shared_ptr<Symbol> funcname = std::dynamic_pointer_cast<Symbol>(args[0]);
-    if (!funcname)
-        throw std::runtime_error("Expected a symbol as first argument");
+    aassert(arg_list.size() >= 2, "Expected at least the name and the list of arguments");
+    aassert(alma.symbolp(arg_list[0]), "Expected a symbol as first argument but found " << alma.to_string(arg_list[0]));
+    aassert(alma.null(arg_list[1]) || alma.consp(arg_list[1]),
+        "Expected a list of symbols but found " << alma.to_string(arg_list[1]));
 
-    std::shared_ptr<Object> funcargs = std::dynamic_pointer_cast<Nil>(args[1]);
-    if (!funcargs) {
-        funcargs = std::dynamic_pointer_cast<Cons>(args[1]);
-        if (!funcargs)
-            throw std::runtime_error("Expected a list of symbols.");
-    }
+    std::vector<ObjectRef<Object>> lambda_call = { alma.intern_alma_symbol(gen) };
+    lambda_call.insert(lambda_call.end(), arg_list.begin() + 1, arg_list.end());
 
-    // set-symbol-function
-    std::shared_ptr<Object> set_symbol_function = *Package::almaPackage->find_symbol("set-symbol-function");
+    ObjectRef<Object> quoted_name = alma.make<Cons>(
+        std::vector<ObjectRef<Object>> { alma.intern_alma_symbol("quote"), arg_list[0] });
 
-    // (quote funcname)
-    std::shared_ptr<Object> quote = *Package::almaPackage->find_symbol("quote");
-    std::shared_ptr<Object> quote_funcname = std::make_shared<Cons>(std::vector<std::shared_ptr<Object>> { quote, funcname });
-
-    // (lambda (...) body ...)
-    std::shared_ptr<Object> lambda = *Package::almaPackage->find_symbol(gen);
-    std::vector<std::shared_ptr<Object>> lambdacall = { lambda, funcargs };
-    for (size_t i = 2; i < args.size(); i++) {
-        lambdacall.push_back(args[i]);
-    }
-    std::shared_ptr<Object> lambda_object = std::make_shared<Cons>(lambdacall);
-
-    // (set-symbol-function (quote funcname) (lambda (...) body ...))
-    std::vector<std::shared_ptr<Object>> result_list = { set_symbol_function, quote_funcname, lambda_object };
-    std::shared_ptr<Object> result = std::make_shared<Cons>(result_list);
-
-    return result;
+    return alma.make<Cons>(std::vector<ObjectRef<Object>> {
+        alma.intern_alma_symbol("set-symbol-value"), quoted_name, alma.make<Cons>(lambda_call) });
 }
 
-std::shared_ptr<Object> defun::eval_body(
-    const std::vector<std::shared_ptr<Object>>& args, Environment& lex_env [[maybe_unused]])
+ObjectRef<Object> defun::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
 {
-    return define_operation("lambda", args);
+    return define_operation("lambda", arg_list);
 }
 
-std::shared_ptr<Object> defmacro::eval_body(
-    const std::vector<std::shared_ptr<Object>>& args, Environment& lex_env [[maybe_unused]])
+ObjectRef<Object> defmacro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
 {
-    return define_operation("gamma", args);
+    return define_operation("gamma", arg_list);
+}
+
+// --------------------------------------------------------------------------------
+
+/** (name argument...) -> (emit (quote (name argument...))) */
+static ObjectRef<Object> emit_form(const std::string& name, const std::vector<ObjectRef<Object>>& arg_list)
+{
+    Alma& alma = Alma::alma;
+    std::vector<ObjectRef<Object>> form { alma.intern_alma_symbol(name) };
+    form.insert(form.end(), arg_list.begin(), arg_list.end());
+    ObjectRef<Object> quoted = alma.make<Cons>(
+        std::vector<ObjectRef<Object>> { alma.intern_alma_symbol("quote"), alma.make<Cons>(form) });
+    return alma.make<Cons>(std::vector<ObjectRef<Object>> { alma.intern_alma_symbol("emit"), quoted });
+}
+
+ObjectRef<Object> emit_function::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return emit_form("function", arg_list);
+}
+
+ObjectRef<Object> emit_macro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return emit_form("macro", arg_list);
+}
+
+ObjectRef<Object> emit_variable::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return emit_form("variable", arg_list);
+}
+
+ObjectRef<Object> emit_struct::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return emit_form("struct", arg_list);
+}
+
+ObjectRef<Object> emit_union::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return emit_form("union", arg_list);
 }

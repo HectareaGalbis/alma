@@ -5,18 +5,26 @@
 
 void intern_macros();
 
-#define declare_macro(name)                                                   \
-    class name : public Macro {                                               \
-    public:                                                                   \
-        name()                                                                \
-            : Macro()                                                         \
-        {                                                                     \
-        }                                                                     \
-                                                                              \
-    protected:                                                                \
-        virtual ObjectRef<Object> eval_body(                                  \
-            const std::vector<ObjectRef<Object>>& args, Alma& alma) override; \
+#define declare_macro(name)                                     \
+    class name : public Macro {                                 \
+    public:                                                     \
+        name()                                                  \
+            : Macro()                                           \
+        {                                                       \
+        }                                                       \
+                                                                \
+    protected:                                                  \
+        virtual ObjectRef<Object> eval_body(                    \
+            const std::vector<ObjectRef<Object>>& arg_list,     \
+            ObjectRef<class Environment> environment) override; \
     }
 
 declare_macro(defun);
 declare_macro(defmacro);
+
+// (function ...), (macro ...), (variable ...), (struct ...) and (union ...) expand to (emit '(...))
+declare_macro(emit_function);
+declare_macro(emit_macro);
+declare_macro(emit_variable);
+declare_macro(emit_struct);
+declare_macro(emit_union);

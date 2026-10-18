@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "record.hpp"
 #include "type.hpp"
 #include <memory>
 #include <optional>
@@ -43,6 +44,16 @@ private:
     std::unordered_set<std::string> locals;
     std::optional<Declaration> function;
     std::shared_ptr<std::set<std::string>> headers = std::make_shared<std::set<std::string>>();
+    Records records;
+    bool in_loop = false;
+    bool in_switch = false;
+
+    /** Labels of the current function, shared by all its blocks */
+    struct Labels {
+        std::set<std::string> defined;
+        std::set<std::string> used;
+    };
+    std::shared_ptr<Labels> labels;
 
 public:
     /** Add a top level declaration. A declaration of the C standard library is replaced by
@@ -70,8 +81,34 @@ public:
         The copy starts a new scope and remembers the function it belongs to. */
     Declarations function_scope(const Declaration& function) const;
 
+    /** Return a copy of these declarations to check a block inside a function. The copy starts a new scope. */
+    Declarations block_scope() const;
+    /** Like block_scope, for the body of a loop or a switch */
+    Declarations loop_scope() const;
+    Declarations switch_scope() const;
+
+    /** Labels of the current function. A goto can jump to a label defined later, so the labels
+        used by goto are checked when the function ends. */
+    void define_label(const std::string& name);
+    void use_label(const std::string& name);
+    /** Labels used by goto that are not defined */
+    std::vector<std::string> undefined_labels() const;
+
+    /** break is valid inside a loop or a switch, and continue inside a loop */
+    bool can_break() const;
+    bool can_continue() const;
+
     /** Return the function whose body is being checked, if any */
     const Declaration* get_function() const;
+
+    /** Structures declared or defined */
+    Records& get_records();
+    const Records& get_records() const;
+
+    /** Return the structure of a type, if it is the name of a declared structure */
+    const Record* get_record(const Type& type) const;
+    /** Types whose size is known: not void, not a function, and not an undefined structure or an array of them */
+    bool is_complete(const Type& type) const;
 
     template <typename... Args>
     void emplace(Args&&... args)

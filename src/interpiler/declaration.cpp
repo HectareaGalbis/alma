@@ -58,6 +58,7 @@ bool Declaration::operator==(const Declaration& other) const
 void Declarations::add(const Declaration& declaration)
 {
     const std::string& name = declaration.getName();
+    aassert(!records.contains(name), "'" << name << "' is the name of a struct");
     auto it = declarations.find(name);
     if (it == declarations.end()) {
         declarations.try_emplace(name, declaration);
@@ -129,12 +130,96 @@ void Declarations::add_local(const Declaration& declaration)
     locals.insert(name);
 }
 
+Declarations Declarations::block_scope() const
+{
+    Declarations scope(*this);
+    scope.locals.clear();
+    return scope;
+}
+
+Declarations Declarations::loop_scope() const
+{
+    Declarations scope = block_scope();
+    scope.in_loop = true;
+    return scope;
+}
+
+Declarations Declarations::switch_scope() const
+{
+    Declarations scope = block_scope();
+    scope.in_switch = true;
+    return scope;
+}
+
+bool Declarations::can_break() const
+{
+    return in_loop || in_switch;
+}
+
+bool Declarations::can_continue() const
+{
+    return in_loop;
+}
+
 Declarations Declarations::function_scope(const Declaration& _function) const
 {
     Declarations scope(*this);
     scope.locals.clear();
     scope.function = _function;
+    scope.labels = std::make_shared<Labels>();
     return scope;
+}
+
+void Declarations::define_label(const std::string& name)
+{
+    aassert(labels, "A label can only be defined inside a function");
+    aassert(!labels->defined.contains(name), "Duplicate label '" << name << "'");
+    labels->defined.insert(name);
+}
+
+void Declarations::use_label(const std::string& name)
+{
+    aassert(labels, "goto can only be used inside a function");
+    labels->used.insert(name);
+}
+
+std::vector<std::string> Declarations::undefined_labels() const
+{
+    std::vector<std::string> undefined;
+    if (labels)
+        for (const std::string& name : labels->used)
+            if (!labels->defined.contains(name))
+                undefined.push_back(name);
+    return undefined;
+}
+
+Records& Declarations::get_records()
+{
+    return records;
+}
+
+const Records& Declarations::get_records() const
+{
+    return records;
+}
+
+const Record* Declarations::get_record(const Type& type) const
+{
+    const ValueType* value = dynamic_cast<const ValueType*>(&type);
+    if (!value || !value->get_specifiers().empty() || !records.contains(value->get_name()))
+        return nullptr;
+    return &records.get(value->get_name());
+}
+
+bool Declarations::is_complete(const Type& type) const
+{
+    if (type.is_function() || is_void(type))
+        return false;
+    if (type.is_array())
+        return is_complete(*pointee(type));
+    if (const Record* record = get_record(type))
+        return record->isDefined();
+    return true;
 }
 
 const Declaration* Declarations::get_function() const

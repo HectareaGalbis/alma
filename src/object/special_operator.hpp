@@ -21,4 +21,3 @@ declare_special_operator(quasiquote);
 declare_special_operator(lambda);
 declare_special_operator(gamma);
 declare_special_operator(branch);
-declare_special_operator(Emit);

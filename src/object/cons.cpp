@@ -3,6 +3,7 @@
 #include "alma.hpp"
 #include "debug.hpp"
 #include "interpiler/emitter.hpp"
+#include "interpiler/record.hpp"
 #include "package.hpp"
 #include "procedure.hpp"
 #include "symbol.hpp"
@@ -136,6 +137,59 @@ static std::unique_ptr<Type> emit_call(ObjectRef<Object> callee, const std::vect
     return type->get_result().clone();
 }
 
+/** Access to the members of a struct: (point x) -> point.x, (pointer x) -> pointer->x.
+    Several members access nested structs: (a b c) -> a.b.c */
+static std::unique_ptr<Type> emit_member_access(ObjectRef<Object> base, const std::vector<ObjectRef<Object>>& members,
+    ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output)
+{
+    Alma& alma = Alma::alma;
+
+    aassert(!members.empty(), "Expected a member of " << alma.to_string(base));
+    std::unique_ptr<Type> type = alma.emit_expression(base, environment, declarations, output);
+    for (const ObjectRef<Object>& member : members) {
+        aassert(alma.symbolp(member), "Expected the name of a member but found " << alma.to_string(member));
+        const std::string& member_name = member.as<Symbol>()->get_name();
+
+        bool pointer = type->is_pointer();
+        std::unique_ptr<Type> struct_type = pointer ? pointee(*type) : type->clone();
+        const Record* record = declarations.get_record(*struct_type);
+        aassert(record, "Cannot access the member " << member_name << " of a value of type " << type->to_string(""));
+        const char* keyword = record->isUnion() ? "union" : "struct";
+        aassert(record->isDefined(), "The " << keyword << " " << record->getName() << " is not defined");
+
+        const Type* member_type = nullptr;
+        for (const auto& [name, candidate] : record->getMembers())
+            if (name == member_name)
+                member_type = candidate.get();
+        aassert(member_type, "The " << keyword << " " << record->getName() << " has no member " << member_name);
+
+        output << (pointer ? "->" : ".") << member_name;
+        type = member_type->clone();
+    }
+    return type;
+}
+
+/** A symbol declared as a function or a pointer to a function */
+static bool is_callable(const ObjectRef<Object>& obj, const Declarations& declarations)
+{
+    if (!Alma::alma.symbolp(obj))
+        return false;
+    const std::string& name = obj.as<Symbol>()->get_name();
+    if (!declarations.contains(name))
+        return true;
+    const FunctionType* type = dynamic_cast<const FunctionType*>(declarations.get(name).getType());
+    return type && (type->is_function() || (type->is_pointer() && type->get_specifiers().size() == 1));
+}
+
+/** A list without emitter is a call if its first element is a function, and an access to members otherwise */
+static std::unique_ptr<Type> emit_application(ObjectRef<Object> car, const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Object> self, ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output)
+{
+    if (is_callable(car, declarations))
+        return emit_call(car, arg_list, self, environment, declarations, output);
+    return emit_member_access(car, arg_list, environment, declarations, output);
+}
+
 void Cons::emit_top_level(ObjectRef<Object> self, ObjectRef<Environment> environment,
     Declarations& declarations, std::stringstream& output)
 {
@@ -151,7 +205,7 @@ void Cons::emit_statement(ObjectRef<Object> self, ObjectRef<Environment> environ
     if (emitter) {
         (*emitter)->emit_statement(*emitter, emit_arguments(*this, self), environment, declarations, output);
     } else {
-        emit_call(this->car, emit_arguments(*this, self), self, environment, declarations, output);
+        emit_application(this->car, emit_arguments(*this, self), self, environment, declarations, output);
         output << ";\n";
     }
 }
@@ -162,7 +216,7 @@ std::unique_ptr<Type> Cons::emit_expression(ObjectRef<Object> self, ObjectRef<En
     std::optional<ObjectRef<Emitter>> emitter = find_emitter(this->car);
     if (emitter)
         return (*emitter)->emit_expression(*emitter, emit_arguments(*this, self), environment, declarations, output);
-    return emit_call(this->car, emit_arguments(*this, self), self, environment, declarations, output);
+    return emit_application(this->car, emit_arguments(*this, self), self, environment, declarations, output);
 }
 
 std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])

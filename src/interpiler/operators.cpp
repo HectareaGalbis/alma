@@ -82,8 +82,20 @@ static bool is_lvalue(const ObjectRef<Object>& obj, const Declarations& declarat
     if (!Alma::alma.consp(obj))
         return false;
     auto [list, tail] = obj.as<Cons>()->to_list();
+    if (!Alma::alma.null(tail))
+        return false;
     std::optional<std::string> name = symbol_name(list[0]);
-    return Alma::alma.null(tail) && name && ((*name == "*" && list.size() == 2) || (*name == "aref" && list.size() == 3));
+    if (name && ObjectRef<Symbol>(list[0])->has_emitter())
+        return (*name == "*" && list.size() == 2) || (*name == "aref" && list.size() == 3);
+
+    // Access to members: (variable member...) or (expression member...)
+    if (name) {
+        if (!declarations.contains(*name))
+            return false;
+        const Type* type = declarations.get(*name).getType();
+        return !type->is_function() && !(type->is_pointer() && dynamic_cast<const FunctionType*>(type));
+    }
+    return is_lvalue(list[0], declarations);
 }
 
 static void check_modifiable(const std::string& name, const ObjectRef<Object>& obj, const Type& type,
