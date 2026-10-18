@@ -2,10 +2,10 @@
 #include "declaration.hpp"
 #include "../debug.hpp"
 
-Declaration::Declaration(const std::string& name, const std::unique_ptr<Type>& type, bool defined)
-    : name(name)
-    , type(type->clone())
-    , defined(defined)
+Declaration::Declaration(const std::string& _name, const std::unique_ptr<Type>& _type, bool _defined)
+    : name(_name)
+    , type(_type->clone())
+    , defined(_defined)
 {
 }
 

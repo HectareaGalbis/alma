@@ -112,9 +112,9 @@ std::string specifiers_to_string(const std::vector<Specifier>& specifiers, const
 
 // -----------------------------------------------------------------------------
 
-ValueType::ValueType(const std::string& name, const std::vector<Specifier>& specifiers)
-    : name(name)
-    , specifiers(specifiers)
+ValueType::ValueType(const std::string& _name, const std::vector<Specifier>& _specifiers)
+    : name(_name)
+    , specifiers(_specifiers)
 {
 }
 

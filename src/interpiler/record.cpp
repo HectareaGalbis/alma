@@ -11,11 +11,11 @@ static Record::Members cloneMembers(const Record::Members& members)
     return result;
 }
 
-Record::Record(const std::string& name, bool unionRecord, const Members& members, bool defined)
-    : name(name)
-    , unionRecord(unionRecord)
-    , members(cloneMembers(members))
-    , defined(defined)
+Record::Record(const std::string& _name, bool _unionRecord, const Members& _members, bool _defined)
+    : name(_name)
+    , unionRecord(_unionRecord)
+    , members(cloneMembers(_members))
+    , defined(_defined)
 {
 }
 
