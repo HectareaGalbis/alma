@@ -1,7 +1,10 @@
 
 (emit
-  (include "stdio.h")
   (declare printf (int ((char *) &rest)))
+  
+  (function print_name void ((name (char *)))
+    (printf "Hello %s\n" name))
+    
   (function main int ()
-    (printf "Hola mundo\n")
+    (print_name "Héctor")
     (return 0)))

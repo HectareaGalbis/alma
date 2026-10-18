@@ -45,17 +45,8 @@ public:
     virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 };
 
-/** (include "stdio.h") -> #include <stdio.h> */
-class EmitterInclude : public Emitter {
-public:
-    EmitterInclude();
-
-    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
-        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
-};
-
-/** (declare printf (int ((char *) &rest)))
-    Only registers the declaration; nothing is written. */
+/** (declare printf (int ((char *) &rest))) -> int printf(char *, ...);
+    (declare counter int) -> extern int counter; */
 class EmitterDeclare : public Emitter {
 public:
     EmitterDeclare();

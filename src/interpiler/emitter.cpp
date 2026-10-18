@@ -4,7 +4,6 @@
 #include "../debug.hpp"
 #include "../object/cons.hpp"
 #include "../object/environment.hpp"
-#include "../object/string.hpp"
 #include "../object/symbol.hpp"
 
 static std::string type_to_string(const Type& type)
@@ -77,25 +76,6 @@ ObjectRef<Object> Emitter::type(ObjectRef<Object> self [[maybe_unused]]) const
 
 // -----------------------------------------------------------------------------
 
-EmitterInclude::EmitterInclude()
-    : Emitter("include")
-{
-}
-
-void EmitterInclude::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
-    const std::vector<ObjectRef<Object>>& arg_list,
-    ObjectRef<Environment> environment [[maybe_unused]],
-    Declarations& declarations [[maybe_unused]],
-    std::stringstream& output)
-{
-    aassert(arg_list.size() == 1, "include expects one argument but received " << arg_list.size());
-    const String* header = dynamic_cast<const String*>(arg_list[0].get());
-    aassert(header, "include expects a string but found " << Alma::alma.to_string(arg_list[0]));
-    output << "#include <" << header->get_content() << ">\n";
-}
-
-// -----------------------------------------------------------------------------
-
 EmitterDeclare::EmitterDeclare()
     : Emitter("declare")
 {
@@ -105,12 +85,16 @@ void EmitterDeclare::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> environment [[maybe_unused]],
     Declarations& declarations,
-    std::stringstream& output [[maybe_unused]])
+    std::stringstream& output)
 {
     aassert(arg_list.size() == 2, "declare expects a name and a type but received " << arg_list.size() << " arguments");
     std::string declaration_name = symbol_name(arg_list[0], "the name of a declaration");
     std::unique_ptr<Type> type = Type::parse_object(arg_list[1]);
     declarations.add(Declaration(declaration_name, type));
+
+    if (!type->is_function())
+        output << "extern ";
+    output << type->to_string(declaration_name) << ";\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -216,7 +200,6 @@ static void intern_emitter(const std::string& name)
 
 void intern_emitters()
 {
-    intern_emitter<EmitterInclude>("include");
     intern_emitter<EmitterDeclare>("declare");
     intern_emitter<EmitterFunction>("function");
     intern_emitter<EmitterReturn>("return");
