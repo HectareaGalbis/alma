@@ -1,0 +1,7 @@
+
+(emit
+  (include "stdio.h")
+  (declare printf (int ((char *) &rest)))
+  (function main int ()
+    (printf "Hola mundo\n")
+    (return 0)))

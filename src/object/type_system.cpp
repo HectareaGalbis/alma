@@ -15,7 +15,7 @@ TypeSystem::TypeSystem()
 
     ObjectRef<Symbol> object = intern_type("object");
     this->insert_type(object, t);
-    for (const std::string name : { "character", "character-macro", "cons", "environment",
+    for (const std::string name : { "character", "character-macro", "cons", "emitter", "environment",
              "integer", "package", "string", "symbol", "type-system" })
         this->insert_type(intern_type(name), object);
 

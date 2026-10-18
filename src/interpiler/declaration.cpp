@@ -68,3 +68,24 @@ const Declaration& Declarations::get(const std::string& name) const
     aassert(it != declarations.end(), "Declaration '" << name << "' not found");
     return it->second;
 }
+
+void Declarations::add_local(const Declaration& declaration)
+{
+    const std::string& name = declaration.getName();
+    aassert(!locals.contains(name), "Redeclaration of '" << name << "'");
+    declarations.insert_or_assign(name, declaration);
+    locals.insert(name);
+}
+
+Declarations Declarations::function_scope(const Declaration& _function) const
+{
+    Declarations scope(*this);
+    scope.locals.clear();
+    scope.function = _function;
+    return scope;
+}
+
+const Declaration* Declarations::get_function() const
+{
+    return function ? &*function : nullptr;
+}

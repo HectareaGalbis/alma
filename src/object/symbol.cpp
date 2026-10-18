@@ -1,6 +1,7 @@
 
 #include "symbol.hpp"
 #include "alma.hpp"
+#include "interpiler/declaration.hpp"
 #include "debug.hpp"
 #include "environment.hpp"
 #include "object.hpp"
@@ -171,4 +172,26 @@ void Symbol::push_emitter(ObjectRef<Emitter> emitter)
 void Symbol::pop_emitter()
 {
     this->pop_property(Alma::alma.intern_alma_symbol("emitter"));
+}
+
+void Symbol::emit_top_level(ObjectRef<Object> self, ObjectRef<Environment> environment [[maybe_unused]],
+    Declarations& declarations [[maybe_unused]], std::stringstream& output [[maybe_unused]])
+{
+    athrow("The symbol " << this->to_string(self) << " cannot be emitted at the top level");
+}
+
+void Symbol::emit_statement(ObjectRef<Object> self, ObjectRef<Environment> environment,
+    Declarations& declarations, std::stringstream& output)
+{
+    Alma::alma.emit_expression(self, environment, declarations, output);
+    output << ";\n";
+}
+
+std::unique_ptr<Type> Symbol::emit_expression(ObjectRef<Object> self [[maybe_unused]],
+    ObjectRef<Environment> environment [[maybe_unused]],
+    Declarations& declarations [[maybe_unused]], std::stringstream& output)
+{
+    aassert(declarations.contains(this->name), "'" << this->name << "' is not declared");
+    output << this->name;
+    return declarations.get(this->name).getType()->clone();
 }

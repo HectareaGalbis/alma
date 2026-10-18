@@ -1,14 +1,14 @@
-
 #pragma once
 
 #include "../object/object.hpp"
-#include "../object/procedure.hpp"
 #include "declaration.hpp"
+#include "type.hpp"
 #include <memory>
+#include <sstream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+/*
 Eval es la combinacion de expand y reduce
     Eval es la union entre interfaz e implementacion
         Eval es la composicion de un anamorfismo y un catamorfismo
@@ -16,60 +16,71 @@ Eval es la combinacion de expand y reduce
             Cambiar el sistema de evaluacion de alma
                 Dado un objeto,
     primero expandirlo y luego performarlo.
+*/
 
-    class Emitter : public Object {
-    friend class EmitterTopLevel;
-    friend class EmitterNonTopLevel;
+class Environment;
 
+/** An emitter is associated to a symbol and emits the lists whose first element is that symbol.
+    By default it cannot be emitted anywhere; each emitter overrides the positions it supports. */
+class Emitter : public Object {
 private:
-    virtual void emit_top_level(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output)
-        = 0;
+    std::string name;
 
 public:
-    virtual void emit_non_top_level(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output)
-        = 0;
+    Emitter(const std::string& name);
 
-protected:
-    virtual void emit_impl(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output)
-        = 0;
+    const std::string& get_name() const;
 
-public:
-    void handle(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output) override final;
+    virtual void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output);
+
+    /** By default, emit the expression followed by a semicolon */
+    virtual void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output);
+
+    virtual std::unique_ptr<Type> emit_expression(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output);
+
+    virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 };
 
-class EmitterTopLevel : public Emitter {
-private:
-    void emit_top_level(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output) override final;
-
+/** (include "stdio.h") -> #include <stdio.h> */
+class EmitterInclude : public Emitter {
 public:
-    void emit_non_top_level(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output) override final;
+    EmitterInclude();
+
+    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
 };
 
-class EmitterNonTopLevel : private Emitter {
-private:
-    void emit_top_level(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output) override final;
-
+/** (declare printf (int ((char *) &rest)))
+    Only registers the declaration; nothing is written. */
+class EmitterDeclare : public Emitter {
 public:
-    void emit_non_top_level(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment,
-        std::stringstream& output) override final;
+    EmitterDeclare();
+
+    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
 };
 
-class EmitterExpression : public EmitterNonTopLevel {
+/** (function main int ((argc int) (argv (char * *))) body...) */
+class EmitterFunction : public Emitter {
 public:
-    virtual std::unique_ptr<Type> get_type() = 0;
+    EmitterFunction();
+
+    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
 };
+
+/** (return) or (return expression) */
+class EmitterReturn : public Emitter {
+public:
+    EmitterReturn();
+
+    void emit_statement(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
+/** Associate each emitter to its symbol */
+void intern_emitters();

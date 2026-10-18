@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "interfaces/emittable.hpp"
 #include "object.hpp"
 #include <string>
 #include <unordered_map>
@@ -10,7 +11,7 @@ class Package;
 class Environment;
 class Emitter;
 
-class Symbol : public Object {
+class Symbol : public Object, public Emittable {
 private:
     std::string name;
     std::unordered_map<ObjectTrackedKeyRef<Symbol>, std::vector<ObjectTrackedKeyRef<Object>>,
@@ -24,6 +25,13 @@ public:
         override;
     virtual std::string to_string(ObjectRef<Object> self) override;
     virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
+
+    virtual void emit_top_level(ObjectRef<Object> self, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output) override;
+    virtual void emit_statement(ObjectRef<Object> self, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output) override;
+    virtual std::unique_ptr<Type> emit_expression(ObjectRef<Object> self, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output) override;
 
     std::string& get_name();
     const std::string& get_name() const;

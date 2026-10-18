@@ -3,6 +3,7 @@
 #include "alma.hpp"
 #include "debug.hpp"
 #include "interfaces/applicable.hpp"
+#include "interfaces/emittable.hpp"
 #include "interfaces/expandable.hpp"
 #include "interfaces/transformable.hpp"
 #include "object/cons.hpp"
@@ -10,6 +11,7 @@
 #include "object/function.hpp"
 #include "object/object.hpp"
 #include "object/package.hpp"
+#include "object/special_operator.hpp"
 #include "reader.hpp"
 #include <fstream>
 
@@ -30,6 +32,7 @@ void Alma::intern_functions()
     intern_function(Setq, "setq");
     intern_function(Eq, "eq");
     intern_function(Eval, "eval");
+    intern_function(Emit, "emit");
 }
 
 static void intern_selfevaluating_symbol(Alma& alma, const std::string& name)
@@ -54,6 +57,7 @@ Alma::Alma()
 {
     this->intern_symbols();
     this->intern_functions();
+    intern_emitters();
 }
 
 ObjectRef<Object> Alma::expand(ObjectRef<Object> obj, ObjectRef<Environment> _environment)
@@ -139,14 +143,50 @@ ObjectRef<Object> Alma::apply(
     return this->apply(obj, arg_list, _environment);
 }
 
+static Emittable& as_emittable(Alma& alma, ObjectRef<Object> obj)
+{
+    Emittable* emittable = dynamic_cast<Emittable*>(obj.get());
+    if (!emittable)
+        athrow("The object " << alma.to_string(obj) << " is not emittable");
+    return *emittable;
+}
+
+void Alma::emit(ObjectRef<Object> obj)
+{
+    // Emit on copies so that a failed emission leaves no partial output or declarations
+    Declarations _declarations = this->declarations;
+    std::stringstream _output;
+    try {
+        this->emit_top_level(obj, this->environment, _declarations, _output);
+    } catch (const std::runtime_error& e) {
+        athrow("Error emitting " << this->to_string(obj) << "\n"
+                                 << e.what());
+    }
+    this->declarations = std::move(_declarations);
+    this->output << _output.str();
+}
+
+void Alma::emit_top_level(ObjectRef<Object> obj, ObjectRef<Environment> _environment,
+    Declarations& _declarations, std::stringstream& _output)
+{
+    as_emittable(*this, obj).emit_top_level(obj, _environment, _declarations, _output);
+}
+
+void Alma::emit_statement(ObjectRef<Object> obj, ObjectRef<Environment> _environment,
+    Declarations& _declarations, std::stringstream& _output)
+{
+    as_emittable(*this, obj).emit_statement(obj, _environment, _declarations, _output);
+}
+
+std::unique_ptr<Type> Alma::emit_expression(ObjectRef<Object> obj, ObjectRef<Environment> _environment,
+    Declarations& _declarations, std::stringstream& _output)
+{
+    return as_emittable(*this, obj).emit_expression(obj, _environment, _declarations, _output);
+}
+
 ObjectRef<Package> Alma::get_current_package()
 {
     return this->current_package;
-}
-
-Emitters& Alma::get_emitters()
-{
-    return this->emitters;
 }
 
 std::stringstream& Alma::get_output()

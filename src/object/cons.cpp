@@ -78,26 +78,91 @@ ObjectRef<Object> Cons::eval(ObjectRef<Object> self [[maybe_unused]], ObjectRef<
     return Alma::alma.apply(callee, this->cdr, environment);
 }
 
-void Cons::emit(ObjectRef<Object> self, ObjectRef<Environment> environment,
-    std::stringstream& output)
+static std::optional<ObjectRef<Emitter>> find_emitter(ObjectRef<Object> obj)
+{
+    if (!Alma::alma.symbolp(obj))
+        return std::nullopt;
+    ObjectRef<Symbol> symbol(obj);
+    if (!symbol->has_emitter())
+        return std::nullopt;
+    return symbol->get_emitter();
+}
+
+static std::vector<ObjectRef<Object>> emit_arguments(const Cons& cons, ObjectRef<Object> self)
+{
+    auto [list, rest] = cons.to_list();
+    aassert(Alma::alma.null(rest), "Cannot emit a non proper list " << Alma::alma.to_string(self));
+    return std::vector<ObjectRef<Object>>(list.begin() + 1, list.end());
+}
+
+/** Emit a call to a declared function */
+static std::unique_ptr<Type> emit_call(ObjectRef<Object> callee, const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Object> self, ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output)
 {
     Alma& alma = Alma::alma;
 
-    if (!alma.symbolp(this->car))
-        athrow("Cannot emit " << this->to_string(self) << ": the first element must be a symbol");
+    aassert(alma.symbolp(callee),
+        "Cannot emit " << alma.to_string(self) << ": the first element must be a symbol");
+    const std::string& name = callee.as<Symbol>()->get_name();
+    aassert(declarations.contains(name), "The function " << name << " is not declared");
 
-    ObjectRef<Object> car_ref = this->car;
-    ObjectRef<Symbol> symbol = car_ref.as<Symbol>();
-    if (!symbol->has_emitter())
-        athrow("Cannot emit " << this->to_string(self) << ": the symbol "
-                              << symbol->get_name() << " has no emitter");
+    const FunctionType* type = dynamic_cast<const FunctionType*>(declarations.get(name).getType());
+    aassert(type && (type->is_function() || (type->is_pointer() && type->get_specifiers().size() == 1)),
+        name << " is not a function");
 
-    auto [list, rest] = this->to_list();
-    aassert(!rest, "Cannot emit a non proper list " << this->to_string(self));
-    std::vector<ObjectRef<Object>> arg_list(list.begin() + 1, list.end());
+    const std::vector<std::unique_ptr<Type>>& parameters = type->get_arguments();
+    if (type->is_variadic()) {
+        aassert(arg_list.size() >= parameters.size(), "The function " << name << " expects at least "
+                                                                      << parameters.size() << " arguments but received " << arg_list.size());
+    } else {
+        aassert(arg_list.size() == parameters.size(), "The function " << name << " expects "
+                                                                      << parameters.size() << " arguments but received " << arg_list.size());
+    }
 
-    ObjectRef<Emitter> emitter = symbol->get_emitter();
-    emitter->handle(emitter, arg_list, environment, output);
+    output << name << "(";
+    for (size_t i = 0; i < arg_list.size(); i++) {
+        if (i > 0)
+            output << ", ";
+        std::unique_ptr<Type> argument_type = alma.emit_expression(arg_list[i], environment, declarations, output);
+        if (i < parameters.size()) {
+            std::unique_ptr<Type> parameter_type = parameters[i]->decay();
+            aassert(is_assignable(*parameter_type, *argument_type),
+                "The argument " << i + 1 << " of " << name << " must be of type " << parameter_type->to_string("")
+                                << " but " << alma.to_string(arg_list[i]) << " is of type " << argument_type->to_string(""));
+        }
+    }
+    output << ")";
+
+    return type->get_result().clone();
+}
+
+void Cons::emit_top_level(ObjectRef<Object> self, ObjectRef<Environment> environment,
+    Declarations& declarations, std::stringstream& output)
+{
+    std::optional<ObjectRef<Emitter>> emitter = find_emitter(this->car);
+    aassert(emitter, "Cannot emit " << this->to_string(self) << " at the top level");
+    (*emitter)->emit_top_level(*emitter, emit_arguments(*this, self), environment, declarations, output);
+}
+
+void Cons::emit_statement(ObjectRef<Object> self, ObjectRef<Environment> environment,
+    Declarations& declarations, std::stringstream& output)
+{
+    std::optional<ObjectRef<Emitter>> emitter = find_emitter(this->car);
+    if (emitter) {
+        (*emitter)->emit_statement(*emitter, emit_arguments(*this, self), environment, declarations, output);
+    } else {
+        emit_call(this->car, emit_arguments(*this, self), self, environment, declarations, output);
+        output << ";\n";
+    }
+}
+
+std::unique_ptr<Type> Cons::emit_expression(ObjectRef<Object> self, ObjectRef<Environment> environment,
+    Declarations& declarations, std::stringstream& output)
+{
+    std::optional<ObjectRef<Emitter>> emitter = find_emitter(this->car);
+    if (emitter)
+        return (*emitter)->emit_expression(*emitter, emit_arguments(*this, self), environment, declarations, output);
+    return emit_call(this->car, emit_arguments(*this, self), self, environment, declarations, output);
 }
 
 std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])

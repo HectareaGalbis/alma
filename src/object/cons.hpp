@@ -2,11 +2,12 @@
 #pragma once
 
 #include "environment.hpp"
+#include "interfaces/emittable.hpp"
 #include "interfaces/expandable.hpp"
 #include "object.hpp"
 #include <vector>
 
-class Cons : public Object, public Expandable {
+class Cons : public Object, public Expandable, public Emittable {
 private:
     ObjectTrackedRef<Object> car;
     ObjectTrackedRef<Object> cdr;
@@ -22,8 +23,12 @@ public:
         override;
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
-    virtual void emit(ObjectRef<Object> self, ObjectRef<Environment> environment,
-        std::stringstream& output) override;
+    virtual void emit_top_level(ObjectRef<Object> self, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output) override;
+    virtual void emit_statement(ObjectRef<Object> self, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output) override;
+    virtual std::unique_ptr<Type> emit_expression(ObjectRef<Object> self, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output) override;
     virtual std::string to_string(ObjectRef<Object> self) override;
     virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
 

@@ -29,7 +29,6 @@ private:
     ObjectRef<Package> current_package;
     ObjectRef<Nil> nil;
     ObjectRef<TypeSystem> type_system;
-    Emitters emitters;
     std::stringstream output;
     Declarations declarations;
 
@@ -79,11 +78,19 @@ public:
         ObjectRef<Cons> args,
         ObjectRef<Environment> environment);
 
+    /** Emit an object as top level C code, appending it to the output */
+    void emit(ObjectRef<Object> obj);
+
+    /** Emit an object as a top level C construction, a statement or an expression */
+    void emit_top_level(ObjectRef<Object> obj, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output);
+    void emit_statement(ObjectRef<Object> obj, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output);
+    std::unique_ptr<Type> emit_expression(ObjectRef<Object> obj, ObjectRef<Environment> environment,
+        Declarations& declarations, std::stringstream& output);
+
     /** Return the current package */
     ObjectRef<Package> get_current_package();
-
-    /** Return the emitters */
-    Emitters& get_emitters();
 
     /** Return the output */
     std::stringstream& get_output();

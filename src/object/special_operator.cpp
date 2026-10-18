@@ -248,3 +248,13 @@ ObjectRef<Object> branch::eval_body(
             return Alma::alma.make<Nil>();
     }
 }
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> Emit::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    for (const ObjectRef<Object>& arg : arg_list)
+        Alma::alma.emit(arg);
+    return Alma::alma.boolean(false);
+}

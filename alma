@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+#
+# Compile .alma files with alma2c and gcc.
+#
+#   alma [--emit-c] [gcc arguments...] file.alma...
+#
+# Every .alma file is translated to C with alma2c. The rest of the arguments
+# (including .c and .o files) are passed to gcc unchanged, so the usual gcc
+# flags work: -c to create objects, -o to name the output, -Wall, -O2...
+#
+# --emit-c  Only run alma2c: write the C code of each file.alma to file.c
+#           (or to the file given with -o if there is only one input) and
+#           do not call gcc.
+#
+# The alma2c executable is searched in $ALMA2C, next to this script, in
+# build/src/ next to this script and finally in the PATH.
+
+set -u
+
+usage() {
+    echo "Usage: alma [--emit-c] [gcc arguments...] file.alma..." >&2
+}
+
+find_alma2c() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -n "${ALMA2C:-}" ]]; then
+        echo "$ALMA2C"
+    elif [[ -x "$script_dir/alma2c" ]]; then
+        echo "$script_dir/alma2c"
+    elif [[ -x "$script_dir/build/src/alma2c" ]]; then
+        echo "$script_dir/build/src/alma2c"
+    elif command -v alma2c >/dev/null 2>&1; then
+        command -v alma2c
+    else
+        echo "alma: alma2c not found" >&2
+        exit 1
+    fi
+}
+
+# Translate an .alma file to C
+translate() {
+    local input="$1" output="$2"
+    if ! "$ALMA2C_BIN" "$input" -o "$output"; then
+        echo "alma: error translating $input" >&2
+        exit 1
+    fi
+}
+
+if [[ $# -eq 0 ]]; then
+    usage
+    exit 1
+fi
+
+emit_c=0
+output=""
+inputs=()
+gcc_args=()
+input_positions=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --emit-c)
+        emit_c=1
+        ;;
+    -o)
+        [[ $# -ge 2 ]] || { echo "alma: missing file name after -o" >&2; exit 1; }
+        output="$2"
+        gcc_args+=("$1" "$2")
+        shift
+        ;;
+    -o*)
+        output="${1#-o}"
+        gcc_args+=("$1")
+        ;;
+    *.alma)
+        inputs+=("$1")
+        input_positions+=("${#gcc_args[@]}")
+        gcc_args+=("$1")
+        ;;
+    *)
+        gcc_args+=("$1")
+        ;;
+    esac
+    shift
+done
+
+ALMA2C_BIN="$(find_alma2c)"
+
+if [[ $emit_c -eq 1 ]]; then
+    if [[ ${#inputs[@]} -eq 0 ]]; then
+        echo "alma: no .alma files given" >&2
+        exit 1
+    fi
+    if [[ -n "$output" && ${#inputs[@]} -gt 1 ]]; then
+        echo "alma: -o cannot be used with --emit-c and several .alma files" >&2
+        exit 1
+    fi
+    for input in "${inputs[@]}"; do
+        if [[ -n "$output" ]]; then
+            translate "$input" "$output"
+        else
+            name="$(basename "$input")"
+            translate "$input" "${name%.alma}.c"
+        fi
+    done
+    exit 0
+fi
+
+# Translate each input into its own temporary directory, keeping its base
+# name so that gcc names the objects as expected (foo.alma -> foo.o)
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+for i in "${!inputs[@]}"; do
+    input="${inputs[$i]}"
+    name="$(basename "$input")"
+    mkdir "$tmp_dir/$i"
+    c_file="$tmp_dir/$i/${name%.alma}.c"
+    translate "$input" "$c_file"
+    gcc_args[${input_positions[$i]}]="$c_file"
+done
+
+gcc "${gcc_args[@]}"
