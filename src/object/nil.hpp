@@ -5,7 +5,7 @@
 
 class Nil : public Object {
 public:
-    Nil();
+    Nil() = default;
 
     virtual std::string to_string(ObjectRef<Object> self [[maybe_unused]]) override
     {

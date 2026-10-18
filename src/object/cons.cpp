@@ -64,14 +64,17 @@ std::pair<std::vector<ObjectRef<Object>>, ObjectRef<Object>> Cons::to_list() con
     return { list, Alma::alma.intern_alma_symbol("nil") };
 }
 
-ObjectRef<Object> Cons::expand(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
+ObjectRef<Object> Cons::expand(ObjectRef<Object> self, ObjectRef<Environment> environment)
 {
-    return Alma::alma.transform(Alma::alma.eval(this->car, environment), this->cdr, environment);
+    ObjectRef<Object> callee = Alma::alma.eval(this->car, environment);
+    if (!dynamic_cast<Transformable*>(callee.get()))
+        return self;
+    return Alma::alma.transform(callee, this->cdr, environment);
 }
 
-ObjectRef<Object> Cons::reduce(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
+ObjectRef<Object> Cons::eval(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
 {
-    ObjectRef<Object> callee = Alma::alma.reduce(this->car, environment);
+    ObjectRef<Object> callee = Alma::alma.eval(this->car, environment);
     return Alma::alma.apply(callee, this->cdr, environment);
 }
 

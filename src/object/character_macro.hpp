@@ -1,10 +1,11 @@
 
 #pragma once
 
+#include "interfaces/expandable.hpp"
 #include "object.hpp"
 #include "procedure.hpp"
 
-class CharacterMacro : public Object {
+class CharacterMacro : public Object, public Expandable {
 private:
     ObjectTrackedRef<Procedure> transformer;
     ObjectTrackedRef<Object> obj;

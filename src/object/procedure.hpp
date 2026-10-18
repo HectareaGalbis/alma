@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "interfaces/applicable.hpp"
+#include "interfaces/transformable.hpp"
 #include "object.hpp"
 #include "symbol.hpp"
 #include <optional>
@@ -10,7 +12,7 @@ class Environment;
 
 // -----------------------------------------------------------------------------
 
-class Procedure : public Object {
+class Procedure : public Object, public Applicable {
 protected:
     virtual ObjectRef<Object> eval_body(
         const std::vector<ObjectRef<Object>>& arg_list,
@@ -52,7 +54,7 @@ public:
 
 // -----------------------------------------------------------------------------
 
-class Macro : public Procedure {
+class Macro : public Procedure, public Transformable {
 public:
     Macro();
     virtual std::string to_string(ObjectRef<Object> self) override;

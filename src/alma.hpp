@@ -34,16 +34,6 @@ private:
     Declarations declarations;
 
 private:
-    static Alma* global_alma;
-
-public:
-    class WithAlma {
-    public:
-        WithAlma(Alma& alma);
-        ~WithAlma();
-    };
-
-private:
     void intern_functions();
     void intern_symbols();
 

@@ -2,10 +2,11 @@
 #pragma once
 
 #include "environment.hpp"
+#include "interfaces/expandable.hpp"
 #include "object.hpp"
 #include <vector>
 
-class Cons : public Object {
+class Cons : public Object, public Expandable {
 private:
     ObjectTrackedRef<Object> car;
     ObjectTrackedRef<Object> cdr;
@@ -19,7 +20,7 @@ public:
 
     virtual ObjectRef<Object> expand(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
-    virtual ObjectRef<Object> reduce(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
+    virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<Environment> enviroment)
         override;
     virtual void emit(ObjectRef<Object> self, ObjectRef<Environment> environment,
         std::stringstream& output) override;

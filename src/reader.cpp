@@ -1,13 +1,13 @@
 
 #include "reader.hpp"
 #include "alma.hpp"
-#include "character.hpp"
-#include "character_macro.hpp"
-#include "cons.hpp"
+#include "object/character.hpp"
+#include "object/character_macro.hpp"
+#include "object/cons.hpp"
 #include "debug.hpp"
-#include "integer.hpp"
-#include "package.hpp"
-#include "string.hpp"
+#include "object/integer.hpp"
+#include "object/package.hpp"
+#include "object/string.hpp"
 #include <iostream>
 #include <optional>
 #include <regex>

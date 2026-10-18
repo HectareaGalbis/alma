@@ -83,14 +83,6 @@ ObjectRef<Object> Function::type(ObjectRef<Object> self [[maybe_unused]]) const
     return Alma::alma.intern_alma_symbol("function");
 }
 
-ObjectRef<Object> Function::transform(
-    ObjectRef<Object> self [[maybe_unused]],
-    const std::vector<ObjectRef<Object>>& arg_list,
-    ObjectRef<Environment> enviroment)
-{
-    return Alma::alma.expand(this->eval_body(arg_list, enviroment));
-}
-
 ObjectRef<Object> Function::apply(
     ObjectRef<Object> self [[maybe_unused]],
     const std::vector<ObjectRef<Object>>& arg_list,
@@ -98,7 +90,7 @@ ObjectRef<Object> Function::apply(
 {
     std::vector<ObjectRef<Object>> eval_arg_list;
     for (const ObjectRef<Object>& arg : arg_list)
-        eval_arg_list.push_back(Alma::alma.reduce(arg));
+        eval_arg_list.push_back(Alma::alma.eval(arg));
 
     return this->eval_body(eval_arg_list, enviroment);
 }
@@ -125,6 +117,14 @@ ObjectRef<Object> Macro::transform(
     ObjectRef<Environment> enviroment)
 {
     return Alma::alma.expand(this->eval_body(arg_list, enviroment));
+}
+
+ObjectRef<Object> Macro::apply(
+    ObjectRef<Object> self,
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> enviroment)
+{
+    return Alma::alma.eval(this->transform(self, arg_list, enviroment));
 }
 
 // -----------------------------------------------------------------------------

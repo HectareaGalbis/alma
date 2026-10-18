@@ -2,6 +2,9 @@
 
 #include "alma.hpp"
 #include "debug.hpp"
+#include "interfaces/applicable.hpp"
+#include "interfaces/expandable.hpp"
+#include "interfaces/transformable.hpp"
 #include "object/cons.hpp"
 #include "object/environment.hpp"
 #include "object/function.hpp"
@@ -9,6 +12,8 @@
 #include "object/package.hpp"
 #include "reader.hpp"
 #include <fstream>
+
+Alma Alma::alma;
 
 #define intern_function(name, sym_name)                                 \
     ObjectRef<Symbol> name##_func = this->intern_alma_symbol(sym_name); \
@@ -18,7 +23,7 @@ void Alma::intern_functions()
 {
     intern_function(Sum, "+");
     intern_function(Print, "print");
-    intern_function(Type, "type");
+    // intern_function(Type, "type");
     intern_function(Set_symbol_value, "set-symbol-value");
     intern_function(Car, "car");
     intern_function(Cdr, "cdr");
@@ -54,7 +59,10 @@ Alma::Alma()
 ObjectRef<Object> Alma::expand(ObjectRef<Object> obj, ObjectRef<Environment> _environment)
 {
     try {
-        return obj->expand(obj, _environment);
+        Expandable* expandable = dynamic_cast<Expandable*>(obj.get());
+        if (!expandable)
+            return obj;
+        return expandable->expand(obj, _environment);
     } catch (const std::runtime_error& e) {
         athrow("Error expanding " << this->to_string(obj) << "\n"
                                   << e.what());
@@ -94,7 +102,10 @@ ObjectRef<Object> Alma::transform(
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> _environment)
 {
-    return obj->transform(obj, arg_list, _environment);
+    Transformable* transformable = dynamic_cast<Transformable*>(obj.get());
+    if (!transformable)
+        athrow("The object " << this->to_string(obj) << " is not transformable");
+    return transformable->transform(obj, arg_list, _environment);
 }
 
 ObjectRef<Object> Alma::transform(
@@ -112,7 +123,10 @@ ObjectRef<Object> Alma::apply(
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> _environment)
 {
-    return obj->apply(obj, arg_list, _environment);
+    Applicable* applicable = dynamic_cast<Applicable*>(obj.get());
+    if (!applicable)
+        athrow("The object " << this->to_string(obj) << " is not applicable");
+    return applicable->apply(obj, arg_list, _environment);
 }
 
 ObjectRef<Object> Alma::apply(
@@ -220,17 +234,21 @@ ObjectRef<Object> Alma::setq(ObjectRef<Symbol> symbol, ObjectRef<Object> value)
 
 ObjectRef<Object> Alma::find_symbol(const std::string& name, ObjectRef<Package> package)
 {
-    return package->find_symbol(name);
+    std::optional<ObjectRef<Object>> sym = package->find_symbol(name);
+    if (sym.has_value())
+        return *sym;
+    else
+        return this->boolean(false);
 }
 
 ObjectRef<Object> Alma::find_symbol(const std::string& name)
 {
-    return this->current_package->find_symbol(name);
+    return this->find_symbol(name, this->current_package);
 }
 
 ObjectRef<Object> Alma::find_alma_symbol(const std::string& name)
 {
-    return this->alma_package->find_symbol(name);
+    return this->find_symbol(name, this->alma_package);
 }
 
 ObjectRef<Object> Alma::intern_symbol(const std::string& name, ObjectRef<Package> package)
