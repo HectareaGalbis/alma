@@ -8,6 +8,7 @@
 
 class Package;
 class Environment;
+class Emitter;
 
 class Symbol : public Object {
 private:
@@ -44,6 +45,12 @@ public:
     void set_package(ObjectRef<Package> package);
     void push_package(ObjectRef<Package> package);
     void pop_package();
+
+    bool has_emitter();
+    ObjectRef<Emitter> get_emitter();
+    void set_emitter(ObjectRef<Emitter> emitter);
+    void push_emitter(ObjectRef<Emitter> emitter);
+    void pop_emitter();
 };
 
 // void intern_symbols();

@@ -1,7 +1,9 @@
 
 #pragma once
 
+#include "../interfaces/evaluable.hpp"
 #include "gc/gc.hpp"
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -62,7 +64,7 @@ concept ObjectRefRelatedType
 //     virtual bool typep(ObjectRef<Object> self, ObjectRef<Object> type);//     operator bool();
 // };
 
-class Object : public GCObject {
+class Object : public GCObject, public Evaluable {
     template <typename S>
     friend class ObjectRef;
 
@@ -71,12 +73,7 @@ private:
     static void unprotect_object(GCObject** object);
 
 public:
-    virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<class Environment> environment);
-    virtual ObjectRef<Object> expand(ObjectRef<Object> self, ObjectRef<class Environment> environment);
-    virtual ObjectRef<Object> transform(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment);
-    virtual ObjectRef<Object> apply(ObjectRef<Object> self,
-        const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<class Environment> environment);
+    virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<class Environment> environment) override;
     virtual std::string to_string(ObjectRef<Object> self);
     virtual ObjectRef<Object> type(ObjectRef<Object> self) const;
     virtual operator bool();

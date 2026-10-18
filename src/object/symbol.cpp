@@ -5,6 +5,7 @@
 #include "environment.hpp"
 #include "object.hpp"
 #include "package.hpp"
+#include "interpiler/emitter.hpp"
 
 // void intern_symbols()
 // {
@@ -145,4 +146,29 @@ void Symbol::push_package(ObjectRef<Package> package)
 void Symbol::pop_package()
 {
     this->pop_property(Alma::alma.intern_alma_symbol("package"));
+}
+
+bool Symbol::has_emitter()
+{
+    return this->has_property(Alma::alma.intern_alma_symbol("emitter"));
+}
+
+ObjectRef<Emitter> Symbol::get_emitter()
+{
+    return this->get_property(Alma::alma.intern_alma_symbol("emitter"));
+}
+
+void Symbol::set_emitter(ObjectRef<Emitter> emitter)
+{
+    this->set_property(Alma::alma.intern_alma_symbol("emitter"), emitter);
+}
+
+void Symbol::push_emitter(ObjectRef<Emitter> emitter)
+{
+    this->push_property(Alma::alma.intern_alma_symbol("emitter"), emitter);
+}
+
+void Symbol::pop_emitter()
+{
+    this->pop_property(Alma::alma.intern_alma_symbol("emitter"));
 }

@@ -130,6 +130,21 @@ ObjectRef<Package> Alma::get_current_package()
     return this->current_package;
 }
 
+Emitters& Alma::get_emitters()
+{
+    return this->emitters;
+}
+
+std::stringstream& Alma::get_output()
+{
+    return this->output;
+}
+
+Declarations& Alma::get_declarations()
+{
+    return this->declarations;
+}
+
 std::string Alma::to_string(ObjectRef<Object> obj)
 {
     return obj->to_string(obj);

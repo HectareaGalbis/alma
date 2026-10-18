@@ -2,11 +2,14 @@
 #pragma once
 
 #include "gc/gc.hpp"
+#include "interpiler/declaration.hpp"
+#include "interpiler/emitter.hpp"
 #include "object/cons.hpp"
 #include "object/nil.hpp"
 #include "object/object.hpp"
 #include "object/type_system.hpp"
 #include <filesystem>
+#include <sstream>
 #include <vector>
 
 class Environment;
@@ -26,6 +29,9 @@ private:
     ObjectRef<Package> current_package;
     ObjectRef<Nil> nil;
     ObjectRef<TypeSystem> type_system;
+    Emitters emitters;
+    std::stringstream output;
+    Declarations declarations;
 
 private:
     static Alma* global_alma;
@@ -85,6 +91,15 @@ public:
 
     /** Return the current package */
     ObjectRef<Package> get_current_package();
+
+    /** Return the emitters */
+    Emitters& get_emitters();
+
+    /** Return the output */
+    std::stringstream& get_output();
+
+    /** Return the declarations */
+    Declarations& get_declarations();
 
     /** Return a string representation of an object */
     std::string to_string(ObjectRef<Object> obj);

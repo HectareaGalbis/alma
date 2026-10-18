@@ -2,6 +2,7 @@
 #include "cons.hpp"
 #include "alma.hpp"
 #include "debug.hpp"
+#include "interpiler/emitter.hpp"
 #include "package.hpp"
 #include "procedure.hpp"
 #include "symbol.hpp"
@@ -68,9 +69,32 @@ ObjectRef<Object> Cons::expand(ObjectRef<Object> self [[maybe_unused]], ObjectRe
     return Alma::alma.transform(Alma::alma.eval(this->car, environment), this->cdr, environment);
 }
 
-ObjectRef<Object> Cons::eval(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
+ObjectRef<Object> Cons::reduce(ObjectRef<Object> self [[maybe_unused]], ObjectRef<Environment> environment)
 {
-    return Alma::alma.apply(Alma::alma.eval(this->car, environment), this->cdr, environment);
+    ObjectRef<Object> callee = Alma::alma.reduce(this->car, environment);
+    return Alma::alma.apply(callee, this->cdr, environment);
+}
+
+void Cons::emit(ObjectRef<Object> self, ObjectRef<Environment> environment,
+    std::stringstream& output)
+{
+    Alma& alma = Alma::alma;
+
+    if (!alma.symbolp(this->car))
+        athrow("Cannot emit " << this->to_string(self) << ": the first element must be a symbol");
+
+    ObjectRef<Object> car_ref = this->car;
+    ObjectRef<Symbol> symbol = car_ref.as<Symbol>();
+    if (!symbol->has_emitter())
+        athrow("Cannot emit " << this->to_string(self) << ": the symbol "
+                              << symbol->get_name() << " has no emitter");
+
+    auto [list, rest] = this->to_list();
+    aassert(!rest, "Cannot emit a non proper list " << this->to_string(self));
+    std::vector<ObjectRef<Object>> arg_list(list.begin() + 1, list.end());
+
+    ObjectRef<Emitter> emitter = symbol->get_emitter();
+    emitter->handle(emitter, arg_list, environment, output);
 }
 
 std::string Cons::to_string(ObjectRef<Object> self [[maybe_unused]])

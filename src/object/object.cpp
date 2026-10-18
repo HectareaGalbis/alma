@@ -17,6 +17,12 @@ void Object::unprotect_object(GCObject** object)
     Alma::alma.gc.untrack_root_object(object);
 }
 
+ObjectRef<Object> Object::eval(ObjectRef<Object> self, ObjectRef<class Environment> environment)
+{
+    ObjectRef<Object> expansion = this->expand(self, environment);
+    return expansion->reduce(expansion, environment);
+}
+
 ObjectRef<Object> Object::expand(ObjectRef<Object> self, ObjectRef<Environment> enviroment [[maybe_unused]])
 {
     return self;
@@ -30,7 +36,7 @@ ObjectRef<Object> Object::transform(
     athrow("The object " << this->to_string(self) << " is not transformable");
 }
 
-ObjectRef<Object> Object::eval(
+ObjectRef<Object> Object::reduce(
     ObjectRef<Object> self, ObjectRef<Environment> environment [[maybe_unused]])
 {
     return self;
@@ -42,6 +48,21 @@ ObjectRef<Object> Object::apply(
     ObjectRef<Environment> enviroment [[maybe_unused]])
 {
     athrow("The object " << this->to_string(self) << " is not applicable");
+}
+
+void Object::emit(
+    ObjectRef<Object> self [[maybe_unused]],
+    ObjectRef<Environment> environment [[maybe_unused]],
+    std::stringstream& output [[maybe_unused]])
+{
+}
+
+void Object::handle(
+    ObjectRef<Object> self [[maybe_unused]],
+    const std::vector<ObjectRef<Object>>& arg_list [[maybe_unused]],
+    ObjectRef<Environment> environment [[maybe_unused]],
+    std::stringstream& output [[maybe_unused]])
+{
 }
 
 std::string Object::to_string(ObjectRef<Object> self [[maybe_unused]])

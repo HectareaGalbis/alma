@@ -35,13 +35,13 @@ ObjectRef<Object> Print::eval_body(
 
 // --------------------------------------------------------------------------------
 
-ObjectRef<Object> Type::eval_body(
-    const std::vector<ObjectRef<Object>>& arg_list,
-    ObjectRef<Environment> environment [[maybe_unused]])
-{
-    this->check_types(arg_list, { "t" });
-    return Alma::alma.type(arg_list[0]);
-}
+// ObjectRef<Object> Type::eval_body(
+//     const std::vector<ObjectRef<Object>>& arg_list,
+//     ObjectRef<Environment> environment [[maybe_unused]])
+// {
+//     this->check_types(arg_list, { "t" });
+//     return Alma::alma.type(arg_list[0]);
+// }
 
 // --------------------------------------------------------------------------------
 
