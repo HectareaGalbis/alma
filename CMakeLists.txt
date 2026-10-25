@@ -51,3 +51,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 add_subdirectory(src)
+
+include(GNUInstallDirs)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/alma DESTINATION ${CMAKE_INSTALL_BINDIR})

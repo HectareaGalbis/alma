@@ -26,7 +26,8 @@ Es una prueba de concepto en desarrollo.
 
 ## Compilar
 
-Hace falta CMake y un compilador de C++23.
+Hace falta CMake (3.10 o posterior) y `g++` con soporte de C++23. Para compilar
+el C generado hace falta `gcc`.
 
 ```sh
 mkdir -p build && cd build
@@ -37,6 +38,27 @@ Esto genera `build/src/alma2c`, que traduce un archivo de ALMA a C:
 
 ```sh
 build/src/alma2c programa.alma -o programa.c
+```
+
+El tipo de compilación se elige con `CMAKE_BUILD_TYPE`:
+
+| Tipo | Opciones |
+|---|---|
+| `Release` (por defecto) | `-O2`, `NDEBUG` |
+| `Debug` | `-g` y avisos |
+| `FastDebug` | `-O2`, avisos y `-fsanitize=address` |
+
+```sh
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+```
+
+## Instalar
+
+`cmake --install` copia `alma2c` y el script `alma` en `<prefijo>/bin`:
+
+```sh
+cmake --install build                      # en /usr/local/bin (puede necesitar sudo)
+cmake --install build --prefix ~/.local    # en ~/.local/bin
 ```
 
 ## Usar ALMA
@@ -183,6 +205,42 @@ datos, así que un programa puede construirlo con todo lo que hay en ALMA:
 (constantes '((uno 1) (dos 2) (tres 3)))
 ```
 
+### ALMA en tiempo de compilación
+
+Todo lo que no es C se ejecuta al compilar. Además de los vectores, ALMA tiene:
+
+| Forma | Descripción |
+|---|---|
+| `t`, `nil` | verdadero; falso y lista vacía |
+| `(quote x)`, `'x`, `` `x ``, `,x`, `,@x` | quote y quasiquote |
+| `(if c a [b])`, `(progn ...)`, `(let ((a 1) (b 2)) ...)` | control y variables locales |
+| `(defun nombre (args) ...)`, `(lambda (args) ...)` | funciones: los argumentos se evalúan |
+| `(defmacro nombre (args) ...)` | macros: el resultado se vuelve a evaluar |
+| `(defspecial nombre (args) ...)` | operadores especiales: los argumentos no se evalúan y el resultado no se vuelve a evaluar |
+| `(set-symbol-value 'x v)` | dar valor a un símbolo |
+| `car`, `cdr`, `list`, `eq`, `eval`, `+` | listas, comparación, evaluación y suma de enteros |
+| `(print x)` | escribe `x` en la salida estándar al compilar y lo devuelve |
+| `(load "archivo.alma")` | carga y ejecuta otro archivo |
+
+```lisp
+(defspecial cita (x) x)
+(print (cita (a b c)))                   ; escribe (a b c)
+```
+
+### Cargar archivos
+
+`load` ejecuta otro archivo de ALMA como si su contenido estuviera en el punto
+donde se llama: lo que defina (funciones de ALMA, macros, declaraciones de C)
+queda disponible después. Una ruta relativa se resuelve desde el directorio del
+archivo que llama a `load`, no desde el directorio actual.
+
+`*current-file*` contiene la ruta absoluta del archivo que se está cargando.
+
+```lisp
+(load "lib/util.alma")                   ; relativo a este archivo
+(print *current-file*)
+```
+
 ### Introspección
 
 Desde ALMA se puede consultar lo que `emit` conoce, incluida la biblioteca
@@ -265,6 +323,19 @@ Cada ejemplo indica cómo compilarlo.
   funciones de otras bibliotecas se declaran con `function` sin cuerpo.
 - Los nombres de tipo son de una sola palabra (`long`, pero no `unsigned long`).
 - `0` no se acepta como puntero nulo: hay que usar `NULL`.
+
+## Estructura del código
+
+| Ruta | Contenido |
+|---|---|
+| `alma` | script que traduce con `alma2c` y compila con `gcc` |
+| `src/main.cpp` | programa `alma2c` |
+| `src/alma.cpp`, `src/reader.cpp` | intérprete y lector de ALMA |
+| `src/object/` | objetos de ALMA: símbolos, listas, vectores, funciones, macros... |
+| `src/interpiler/` | traducción a C: tipos, declaraciones, operadores, biblioteca estándar y emisión del código |
+| `src/gc/` | recolector de basura |
+| `src/interfaces/` | interfaces comunes de los objetos (evaluar, expandir, emitir...) |
+| `examples/` | ejemplos |
 
 ## Licencia
 
