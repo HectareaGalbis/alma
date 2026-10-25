@@ -38,6 +38,7 @@ void Alma::intern_functions()
     intern_function(Eq, "eq");
     intern_function(Eval, "eval");
     intern_function(List, "list");
+    intern_function(Load, "load");
 
     // Alma: vectors
     intern_function(Vector_create, "vector");
@@ -167,6 +168,7 @@ ObjectRef<Object> Alma::eval(ObjectRef<Object> obj)
 void Alma::load(const std::filesystem::path& path)
 {
     std::ifstream input(path);
+    aassert(input.is_open(), "Cannot open the file " << path.native());
     Reader reader(*this, path.native(), input);
     for (std::optional<ObjectRef<Object>> obj = reader.read(); obj; obj = reader.read())
         this->eval(*obj);

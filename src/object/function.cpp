@@ -10,6 +10,7 @@
 #include "symbol.hpp"
 #include "vector.hpp"
 #include "interpiler/declaration.hpp"
+#include <filesystem>
 #include <iostream>
 
 // ================================================================================
@@ -121,6 +122,19 @@ ObjectRef<Object> List::eval_body(
     if (arg_list.empty())
         return Alma::alma.intern_alma_symbol("nil");
     return Alma::alma.make<Cons>(arg_list);
+}
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> Load::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "string" });
+    std::filesystem::path path = arg_list[0].as<String>()->get_content();
+    aassert(path.is_absolute(), "load only accepts absolute paths but received " << path.native());
+    Alma::alma.load(path);
+    return Alma::alma.boolean(true);
 }
 
 // ================================================================================
