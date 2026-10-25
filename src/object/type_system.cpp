@@ -27,6 +27,7 @@ TypeSystem::TypeSystem()
     this->insert_type(macro, procedure);
     this->insert_type(intern_type("function-user"), function);
     this->insert_type(intern_type("macro-user"), macro);
+    this->insert_type(intern_type("special-operator-user"), procedure);
 }
 
 ObjectRef<Object> TypeSystem::type(ObjectRef<Object> self [[maybe_unused]]) const

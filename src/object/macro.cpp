@@ -15,6 +15,7 @@ void intern_macros()
 {
     intern_macro<defun>("defun");
     intern_macro<defmacro>("defmacro");
+    intern_macro<defspecial>("defspecial");
     intern_macro<emit_function>("function");
     intern_macro<emit_macro>("macro");
     intern_macro<emit_variable>("variable");
@@ -55,6 +56,12 @@ ObjectRef<Object> defmacro::eval_body(
     const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
 {
     return define_operation("gamma", arg_list);
+}
+
+ObjectRef<Object> defspecial::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return define_operation("alpha", arg_list);
 }
 
 // --------------------------------------------------------------------------------

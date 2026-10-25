@@ -21,6 +21,7 @@ void intern_macros();
 
 declare_macro(defun);
 declare_macro(defmacro);
+declare_macro(defspecial);
 
 // (function ...), (macro ...), (variable ...), (struct ...), (union ...) and (enum ...) expand to (emit '(...))
 declare_macro(emit_function);

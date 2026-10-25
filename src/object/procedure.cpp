@@ -254,3 +254,66 @@ ObjectRef<Object> MacroUser::type(ObjectRef<Object> self [[maybe_unused]]) const
 }
 
 // -----------------------------------------------------------------------------
+
+SpecialOperatorUser::SpecialOperatorUser(
+    const std::vector<ObjectRef<Object>>& _param_list,
+    const std::optional<ObjectRef<Object>>& _param_rest,
+    ObjectRef<Environment> _closure,
+    const std::vector<ObjectRef<Object>>& _body)
+    : Procedure()
+    , closure(*this, _closure)
+{
+    for (ObjectRef<Object> param : _param_list)
+        this->param_list.emplace_back(*this, param);
+    if (_param_rest)
+        this->param_rest.emplace(*this, *_param_rest);
+    for (ObjectRef<Object> expr : _body)
+        this->body.emplace_back(*this, expr);
+}
+
+ObjectRef<Object> SpecialOperatorUser::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> enviroment [[maybe_unused]])
+{
+    if (arg_list.size() < this->param_list.size()) {
+        if (this->param_rest) {
+            mthrow("Expected at least " << this->param_list.size() << " arguments");
+        } else {
+            mthrow("Expected " << this->param_list.size() << " arguments");
+        }
+    } else if (!this->param_rest && arg_list.size() > this->param_list.size()) {
+        mthrow("Expected " << this->param_list.size() << " arguments");
+    }
+
+    std::vector<ObjectRef<Object>> arg_rest;
+    if (this->param_rest) {
+        for (size_t i = this->param_list.size(); i < arg_list.size(); i++)
+            arg_rest.push_back(arg_list[i]);
+    }
+    {
+        Environment::WithLayer layer(*this->closure);
+
+        for (size_t i = 0; i < this->param_list.size(); i++)
+            this->closure->insert_or_set_value(
+                this->param_list[i], Alma::alma.intern_alma_symbol("value"), arg_list[i]);
+        if (this->param_rest)
+            this->closure->insert_or_set_value(
+                *this->param_rest, Alma::alma.intern_alma_symbol("value"), Alma::alma.make<Cons>(arg_rest));
+
+        for (size_t i = 0; i < this->body.size() - 1; i++)
+            Alma::alma.eval(this->body[i], this->closure);
+        return Alma::alma.eval(this->body.back(), this->closure);
+    }
+}
+
+std::string SpecialOperatorUser::to_string(ObjectRef<Object> self [[maybe_unused]])
+{
+    return "<special-operator-user>";
+}
+
+ObjectRef<Object> SpecialOperatorUser::type(ObjectRef<Object> self [[maybe_unused]]) const
+{
+    return Alma::alma.intern_alma_symbol("special-operator-user");
+}
+
+// -----------------------------------------------------------------------------

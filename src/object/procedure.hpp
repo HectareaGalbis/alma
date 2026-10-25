@@ -120,3 +120,29 @@ public:
 };
 
 // -----------------------------------------------------------------------------
+
+/** Like FunctionUser or MacroUser, but it does not evaluate its arguments nor its result */
+class SpecialOperatorUser : public Procedure {
+private:
+    std::vector<ObjectTrackedKeyRef<Symbol>> param_list;
+    std::optional<ObjectTrackedRef<Symbol>> param_rest;
+    mutable ObjectTrackedRef<Environment> closure;
+    std::vector<ObjectTrackedKeyRef<Object>> body;
+
+protected:
+    virtual ObjectRef<Object> eval_body(
+        const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> enviroment) override;
+
+public:
+    SpecialOperatorUser(
+        const std::vector<ObjectRef<Object>>& param_list,
+        const std::optional<ObjectRef<Object>>& param_rest,
+        ObjectRef<Environment> closure,
+        const std::vector<ObjectRef<Object>>& body);
+
+    virtual std::string to_string(ObjectRef<Object> self) override;
+    virtual ObjectRef<Object> type(ObjectRef<Object> self) const override;
+};
+
+// -----------------------------------------------------------------------------

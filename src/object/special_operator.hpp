@@ -20,4 +20,5 @@ declare_special_operator(quote);
 declare_special_operator(quasiquote);
 declare_special_operator(lambda);
 declare_special_operator(gamma);
+declare_special_operator(alpha);
 declare_special_operator(branch);

@@ -25,6 +25,7 @@ void intern_special_operators()
     intern_special_operator<quote>("quote");
     intern_special_operator<lambda>("lambda");
     intern_special_operator<gamma>("gamma");
+    intern_special_operator<alpha>("alpha");
     intern_special_operator<branch>("if");
     intern_special_operator<quasiquote>("quasiquote");
 }
@@ -231,6 +232,28 @@ ObjectRef<Object> gamma::eval_body(
         body.push_back(arg_list[i]);
 
     return Alma::alma.make<MacroUser>(param_list, std::nullopt, environment, body);
+}
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> alpha::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment)
+{
+    massert(arg_list.size() >= 1, "Expected at least one argument.");
+
+    std::vector<ObjectRef<Object>> param_list;
+    if (!Alma::alma.null(arg_list[0])) {
+        massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
+        param_list = arg_list[0].as<Cons>()->to_list().first;
+        for (const ObjectRef<Object>& param : param_list)
+            massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
+    }
+
+    std::vector<ObjectRef<Object>> body;
+    for (size_t i = 1; i < arg_list.size(); i++)
+        body.push_back(arg_list[i]);
+
+    return Alma::alma.make<SpecialOperatorUser>(param_list, std::nullopt, environment, body);
 }
 
 // --------------------------------------------------------------------------------
