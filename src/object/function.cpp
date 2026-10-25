@@ -132,7 +132,13 @@ ObjectRef<Object> Load::eval_body(
 {
     this->check_types(arg_list, { "string" });
     std::filesystem::path path = arg_list[0].as<String>()->get_content();
-    aassert(path.is_absolute(), "load only accepts absolute paths but received " << path.native());
+    if (path.is_relative()) {
+        ObjectRef<Symbol> current_file_sym = Alma::alma.intern_alma_symbol("*current-file*");
+        ObjectRef<Object> current_file = current_file_sym->get_value();
+        aassert(Alma::alma.typep(current_file, Alma::alma.intern_alma_symbol("string")),
+            "load cannot resolve the relative path " << path.native() << " because *current-file* is not a string");
+        path = std::filesystem::path(current_file.as<String>()->get_content()).parent_path() / path;
+    }
     Alma::alma.load(path);
     return Alma::alma.boolean(true);
 }

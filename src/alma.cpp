@@ -16,6 +16,8 @@
 #include "object/object.hpp"
 #include "object/package.hpp"
 #include "object/special_operator.hpp"
+#include "object/string.hpp"
+#include "object/symbol.hpp"
 #include "reader.hpp"
 #include <fstream>
 
@@ -112,6 +114,8 @@ void Alma::intern_symbols()
 {
     intern_selfevaluating_symbol(*this, "t");
     intern_selfevaluating_symbol(*this, "nil");
+    ObjectRef<Symbol> current_file = this->intern_alma_symbol("*current-file*");
+    current_file->push_value(this->intern_alma_symbol("nil"));
 }
 
 Alma::Alma()
@@ -170,8 +174,16 @@ void Alma::load(const std::filesystem::path& path)
     std::ifstream input(path);
     aassert(input.is_open(), "Cannot open the file " << path.native());
     Reader reader(*this, path.native(), input);
-    for (std::optional<ObjectRef<Object>> obj = reader.read(); obj; obj = reader.read())
-        this->eval(*obj);
+    ObjectRef<Symbol> current_file = this->intern_alma_symbol("*current-file*");
+    current_file->push_value(this->make<String>(std::filesystem::absolute(path).lexically_normal().native()));
+    try {
+        for (std::optional<ObjectRef<Object>> obj = reader.read(); obj; obj = reader.read())
+            this->eval(*obj);
+    } catch (...) {
+        current_file->pop_value();
+        throw;
+    }
+    current_file->pop_value();
 }
 
 ObjectRef<Object> Alma::transform(
