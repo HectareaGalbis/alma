@@ -48,8 +48,8 @@ translate() {
 }
 
 if [[ $# -eq 0 ]]; then
-    usage
-    exit 1
+    ALMA2C_BIN="$(find_alma2c)" || exit 1
+    exec "$ALMA2C_BIN"
 fi
 
 emit_c=0

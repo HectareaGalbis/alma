@@ -41,6 +41,7 @@ void Alma::intern_functions()
     intern_function(Eval, "eval");
     intern_function(List, "list");
     intern_function(Load, "load");
+    intern_function(Exit, "exit");
 
     // Alma: vectors
     intern_function(Vector_create, "vector");

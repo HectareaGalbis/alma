@@ -143,6 +143,20 @@ ObjectRef<Object> Load::eval_body(
     return Alma::alma.boolean(true);
 }
 
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> Exit::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" }, "string");
+    aassert(arg_list.size() <= 2, "exit expects a boolean and optionally the name of the executable");
+    std::optional<std::string> name;
+    if (arg_list.size() == 2)
+        name = arg_list[1].as<String>()->get_content();
+    throw ExitRequest { Alma::alma.truep(arg_list[0]), name };
+}
+
 // ================================================================================
 // Alma: vectors
 // ================================================================================
