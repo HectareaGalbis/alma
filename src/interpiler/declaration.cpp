@@ -16,7 +16,7 @@ Declaration::Declaration(const std::string& _name, const std::unique_ptr<Type>& 
 
 Declaration::Declaration(const Declaration& other)
     : name(other.name)
-    , type(other.type->clone())
+    , type(other.type)
     , defined(other.defined)
     , header(other.header)
     , constant(other.constant)
@@ -27,7 +27,7 @@ Declaration& Declaration::operator=(const Declaration& other)
 {
     if (this != &other) {
         name = other.name;
-        type = other.type->clone();
+        type = other.type;
         defined = other.defined;
         header = other.header;
         constant = other.constant;
@@ -63,13 +63,19 @@ void Declarations::add(const Declaration& declaration)
     aassert(!enums.contains(name), "'" << name << "' is the name of an enum");
     auto it = declarations.find(name);
     if (it == declarations.end()) {
-        declarations.try_emplace(name, declaration);
-        return;
+        auto base_it = base->find(name);
+        if (base_it == base->end()) {
+            declarations.try_emplace(name, declaration);
+            compact();
+            return;
+        }
+        it = declarations.try_emplace(name, base_it->second).first;
     }
 
     if (it->second.getHeader()) {
         if (!(it->second == declaration) || declaration.isDefined())
             it->second = declaration;
+        compact();
         return;
     }
 
@@ -79,15 +85,38 @@ void Declarations::add(const Declaration& declaration)
         aassert(!it->second.isDefined(), "Redefinition of '" << name << "'");
         it->second.define();
     }
+    compact();
 }
 
-bool Declarations::contains(const std::string& name) const { return declarations.contains(name); }
+const Declaration* Declarations::find(const std::string& name) const
+{
+    auto it = declarations.find(name);
+    if (it != declarations.end())
+        return &it->second;
+    auto base_it = base->find(name);
+    if (base_it != base->end())
+        return &base_it->second;
+    return nullptr;
+}
+
+void Declarations::compact()
+{
+    if (declarations.size() <= max_overlay)
+        return;
+    if (base.use_count() > 1)
+        base = std::make_shared<DeclarationMap>(*base);
+    for (auto& [name, declaration] : declarations)
+        base->insert_or_assign(name, std::move(declaration));
+    declarations.clear();
+}
+
+bool Declarations::contains(const std::string& name) const { return find(name) != nullptr; }
 
 const Declaration& Declarations::get(const std::string& name) const
 {
-    auto it = declarations.find(name);
-    aassert(it != declarations.end(), "Declaration '" << name << "' not found");
-    return it->second;
+    const Declaration* declaration = find(name);
+    aassert(declaration, "Declaration '" << name << "' not found");
+    return *declaration;
 }
 
 std::vector<std::string> Declarations::names() const
@@ -95,6 +124,9 @@ std::vector<std::string> Declarations::names() const
     std::vector<std::string> result;
     for (const auto& [name, declaration] : declarations)
         result.push_back(name);
+    for (const auto& [name, declaration] : *base)
+        if (!declarations.contains(name))
+            result.push_back(name);
     std::sort(result.begin(), result.end());
     return result;
 }
@@ -139,6 +171,7 @@ void Declarations::add_local(const Declaration& declaration)
     aassert(!locals.contains(name), "Redeclaration of '" << name << "'");
     declarations.insert_or_assign(name, declaration);
     locals.insert(name);
+    compact();
 }
 
 Declarations Declarations::block_scope() const

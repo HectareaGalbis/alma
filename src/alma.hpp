@@ -183,8 +183,7 @@ public:
 template <typename T, typename... AS>
 ObjectRef<T> Alma::make(AS&&... as)
 {
-    ObjectRef<T> obj(this->gc.make_object<T>(std::forward<AS>(as)...));
-    ObjectRef<T> result(obj);
+    ObjectRef<T> result(this->gc.make_object<T>(std::forward<AS>(as)...));
     this->gc.try_collect();
     return result;
 }

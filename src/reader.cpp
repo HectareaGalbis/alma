@@ -10,7 +10,6 @@
 #include "object/string.hpp"
 #include <iostream>
 #include <optional>
-#include <regex>
 
 #define ithrow(MSG)                                                                       \
     {                                                                                     \
@@ -53,7 +52,9 @@ bool Reader::Input::read_next_char(char c)
 
 int Reader::Input::read_char()
 {
-    int c = this->input.get();
+    int c = this->input.rdbuf()->sbumpc();
+    if (c == std::char_traits<char>::eof())
+        this->input.setstate(std::ios::eofbit | std::ios::failbit);
     this->last_pos = this->pos;
     this->changed_line = (c == '\n');
     if (this->changed_line) {
@@ -67,7 +68,12 @@ int Reader::Input::read_char()
 
 void Reader::Input::unread_char()
 {
-    this->input.unget();
+    if (this->input.eof())
+        this->input.clear(this->input.rdstate() & ~std::ios::eofbit);
+    if (!this->input.good())
+        this->input.setstate(std::ios::failbit);
+    else if (this->input.rdbuf()->sungetc() == std::char_traits<char>::eof())
+        this->input.setstate(std::ios::badbit);
     iassert(!this->input.fail(), "Error unreading the last character");
     if (this->changed_line) {
         this->line--;
@@ -327,8 +333,11 @@ static bool is_token_character(int c)
 
 static std::optional<ObjectRef<Integer>> parse_number(const std::string& token, Alma& alma)
 {
-    std::regex int_regex(R"(^[+-]?\d+$)");
-    if (std::regex_match(token, int_regex)) {
+    size_t start = (!token.empty() && (token[0] == '+' || token[0] == '-')) ? 1 : 0;
+    bool is_integer = token.size() > start;
+    for (size_t i = start; is_integer && i < token.size(); i++)
+        is_integer = token[i] >= '0' && token[i] <= '9';
+    if (is_integer) {
         int64_t value = std::stoll(token);
         return alma.make<Integer>(value);
     }
@@ -406,6 +415,9 @@ std::optional<ObjectRef<Object>> Reader::Input::read_token()
     std::optional<ObjectRef<Integer>> number = parse_number(token, this->alma);
     if (number)
         return number;
+
+    if (token.find(':') == std::string::npos)
+        return alma.get_current_package()->intern_symbol(token);
 
     std::vector<std::string> splittedTokens = parse_token(token);
     return findSymbol(splittedTokens);

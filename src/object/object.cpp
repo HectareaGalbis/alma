@@ -7,14 +7,14 @@
 #include <iostream>
 #include <optional>
 
-void Object::protect_object(GCObject** object)
+void Object::protect_object(GCNode& node)
 {
-    Alma::alma.gc.track_root_object(object);
+    Alma::alma.gc.track_root_object(node);
 }
 
-void Object::unprotect_object(GCObject** object)
+void Object::unprotect_object(GCNode& node)
 {
-    Alma::alma.gc.untrack_root_object(object);
+    Alma::alma.gc.untrack_root_object(node);
 }
 
 ObjectRef<Object> Object::eval(ObjectRef<Object> self, ObjectRef<class Environment> environment)

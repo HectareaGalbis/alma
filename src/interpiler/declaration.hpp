@@ -13,7 +13,7 @@
 class Declaration {
 private:
     std::string name;
-    std::unique_ptr<Type> type;
+    std::shared_ptr<const Type> type;
     bool defined;
     std::optional<std::string> header;
     bool constant;
@@ -41,7 +41,11 @@ public:
 
 class Declarations {
 private:
-    std::unordered_map<std::string, Declaration> declarations;
+    using DeclarationMap = std::unordered_map<std::string, Declaration>;
+    static constexpr size_t max_overlay = 32;
+
+    std::shared_ptr<DeclarationMap> base = std::make_shared<DeclarationMap>();
+    DeclarationMap declarations;
     std::unordered_set<std::string> locals;
     std::optional<Declaration> function;
     std::shared_ptr<std::set<std::string>> headers = std::make_shared<std::set<std::string>>();
@@ -57,6 +61,9 @@ private:
         std::set<std::string> used;
     };
     std::shared_ptr<Labels> labels;
+
+    const Declaration* find(const std::string& name) const;
+    void compact();
 
 public:
     /** Add a top level declaration. A declaration of the C standard library is replaced by
@@ -128,6 +135,7 @@ public:
         if (!contains(declaration.getName())) {
             std::string name = declaration.getName();
             declarations.emplace(std::move(name), std::move(declaration));
+            compact();
             return;
         }
         add(declaration);

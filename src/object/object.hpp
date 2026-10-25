@@ -69,8 +69,8 @@ class Object : public GCObject, public Evaluable {
     friend class ObjectRef;
 
 private:
-    static void protect_object(GCObject** object);
-    static void unprotect_object(GCObject** object);
+    static void protect_object(GCNode& node);
+    static void unprotect_object(GCNode& node);
 
 public:
     virtual ObjectRef<Object> eval(ObjectRef<Object> self, ObjectRef<class Environment> environment) override;
@@ -270,6 +270,7 @@ public:
 
 private:
     Object& owner;
+    GCNode node;
 
 public:
     ObjectTrackedKeyRef(const ObjectTrackedKeyRef& other);
@@ -302,16 +303,18 @@ template <typename T>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(const ObjectTrackedKeyRef& other)
     : ObjectWeakRef<T>(other.obj)
     , owner(other.owner)
+    , node(&this->obj)
 {
-    this->owner.track_reference(&this->obj);
+    this->owner.track_reference(this->node);
 }
 
 template <typename T>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(ObjectTrackedKeyRef&& other)
     : ObjectWeakRef<T>(other.obj)
     , owner(other.owner)
+    , node(&this->obj)
 {
-    this->owner.track_reference(&this->obj);
+    this->owner.track_reference(this->node);
 }
 
 template <typename T>
@@ -319,8 +322,9 @@ template <Related<T> S>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, const ObjectTrackedKeyRef<S>& other)
     : ObjectWeakRef<T>(other.obj)
     , owner(_owner)
+    , node(&this->obj)
 {
-    this->owner.track_reference(&this->obj);
+    this->owner.track_reference(this->node);
 }
 
 template <typename T>
@@ -328,8 +332,9 @@ template <Related<T> S>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, ObjectTrackedKeyRef<S>&& other)
     : ObjectWeakRef<T>(other.obj)
     , owner(_owner)
+    , node(&this->obj)
 {
-    this->owner.track_reference(&this->obj);
+    this->owner.track_reference(this->node);
     other.obj = nullptr;
 }
 
@@ -338,8 +343,9 @@ template <ObjectRefRelatedType<T> S>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, S&& other)
     : ObjectWeakRef<T>(other)
     , owner(_owner)
+    , node(&this->obj)
 {
-    this->owner.track_reference(&this->obj);
+    this->owner.track_reference(this->node);
 }
 
 template <typename T>
@@ -347,15 +353,15 @@ template <Related<T> S>
 ObjectTrackedKeyRef<T>::ObjectTrackedKeyRef(Object& _owner, S* _obj)
     : ObjectWeakRef<T>(_obj)
     , owner(_owner)
+    , node(&this->obj)
 {
-    this->owner.track_reference(&this->obj);
+    this->owner.track_reference(this->node);
 }
 
 template <typename T>
 ObjectTrackedKeyRef<T>::~ObjectTrackedKeyRef()
 {
-    if (this->obj)
-        this->owner.untrack_reference(&this->obj);
+    this->owner.untrack_reference(this->node);
 }
 
 template <typename T>
@@ -485,6 +491,9 @@ public:
     template <typename S>
     using rebind = ObjectRef<S>;
 
+private:
+    GCNode node;
+
 public:
     ObjectRef(const ObjectRef& other);
     ObjectRef(ObjectRef&& other);
@@ -511,37 +520,41 @@ public:
 template <typename T>
 ObjectRef<T>::ObjectRef(const ObjectRef& other)
     : ObjectWeakRef<T>(other)
+    , node(&this->obj)
 {
-    Object::protect_object(&this->obj);
+    Object::protect_object(this->node);
 }
 
 template <typename T>
 ObjectRef<T>::ObjectRef(ObjectRef&& other)
     : ObjectWeakRef<T>(other)
+    , node(&this->obj)
 {
-    Object::protect_object(&this->obj);
+    Object::protect_object(this->node);
 }
 
 template <typename T>
 template <ObjectRefRelatedType<T> S>
 ObjectRef<T>::ObjectRef(S&& other)
     : ObjectWeakRef<T>(std::forward<S>(other))
+    , node(&this->obj)
 {
-    Object::protect_object(&this->obj);
+    Object::protect_object(this->node);
 }
 
 template <typename T>
 template <Related<T> S>
 ObjectRef<T>::ObjectRef(S* _obj)
     : ObjectWeakRef<T>(_obj)
+    , node(&this->obj)
 {
-    Object::protect_object(&this->obj);
+    Object::protect_object(this->node);
 }
 
 template <typename T>
 ObjectRef<T>::~ObjectRef()
 {
-    Object::unprotect_object(&this->obj);
+    Object::unprotect_object(this->node);
 }
 
 template <typename T>
