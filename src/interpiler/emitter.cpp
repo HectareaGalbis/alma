@@ -384,6 +384,7 @@ void EmitterStruct::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
     aassert(!arg_list.empty(), keyword << " expects a name and optionally its members");
     std::string struct_name = symbol_name(arg_list[0], "the name of a " + keyword);
     aassert(!declarations.contains(struct_name), "'" << struct_name << "' is already declared");
+    aassert(!declarations.is_enum(struct_name), "'" << struct_name << "' is already declared as an enum");
 
     // The typedef lets use the name of the struct as a type
     Records& records = declarations.get_records();
@@ -419,6 +420,64 @@ void EmitterStruct::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
         output << "    " << member_type->to_string(member_name) << ";\n";
     output << "};\n";
     records.add(Record(struct_name, union_record, members, true));
+}
+
+// -----------------------------------------------------------------------------
+
+EmitterEnum::EmitterEnum()
+    : Emitter("enum")
+{
+}
+
+void EmitterEnum::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment,
+    Declarations& declarations,
+    std::stringstream& output)
+{
+    aassert(arg_list.size() >= 2, "enum expects a name and at least one constant");
+    std::string enum_name = symbol_name(arg_list[0], "the name of an enum");
+    aassert(!declarations.contains(enum_name), "'" << enum_name << "' is already declared");
+    aassert(!declarations.get_records().contains(enum_name), "'" << enum_name << "' is already declared as a struct or union");
+    aassert(!declarations.is_enum(enum_name), "Redefinition of enum '" << enum_name << "'");
+    declare_enum_type(enum_name);
+
+    // The constants are int constants, visible from the next constant
+    std::unique_ptr<Type> int_type = std::make_unique<ValueType>("int");
+    std::vector<std::string> constants;
+    std::stringstream body;
+    for (size_t i = 1; i < arg_list.size(); i++) {
+        const ObjectRef<Object>& item = arg_list[i];
+        std::string constant;
+        std::optional<ObjectRef<Object>> value;
+        if (Alma::alma.symbolp(item)) {
+            constant = symbol_name(item, "a constant of " + enum_name);
+        } else {
+            std::vector<ObjectRef<Object>> pair = proper_list(item, "a constant of " + enum_name);
+            aassert(pair.size() == 2,
+                "Expected a name or (name value) as constant of " << enum_name << " but found " << Alma::alma.to_string(item));
+            constant = symbol_name(pair[0], "the name of a constant of " + enum_name);
+            value = pair[1];
+        }
+
+        body << "    " << constant;
+        if (value) {
+            aassert(is_constant(*value, declarations),
+                "The value of " << constant << " must be a constant but found " << Alma::alma.to_string(*value));
+            body << " = ";
+            std::unique_ptr<Type> type = Alma::alma.emit_expression(*value, environment, declarations, body);
+            aassert(is_integer(*type), "The value of " << constant << " must be an integer but "
+                                                       << Alma::alma.to_string(*value) << " is of type " << type_to_string(*type));
+        }
+        body << (i + 1 < arg_list.size() ? ",\n" : "\n");
+
+        declarations.add(Declaration(constant, int_type, true, std::nullopt, true));
+        constants.push_back(constant);
+    }
+    declarations.add_enum(enum_name, constants);
+
+    output << "typedef enum " << enum_name << "\n{\n"
+           << body.str() << "} " << enum_name << ";\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -724,6 +783,7 @@ void intern_emitters()
     intern_emitter<EmitterVariable>("variable");
     intern_emitter<EmitterStruct>("struct", false);
     intern_emitter<EmitterStruct>("union", true);
+    intern_emitter<EmitterEnum>("enum");
     intern_emitter<EmitterReturn>("return");
     intern_emitter<EmitterBlock>("block");
     intern_emitter<EmitterIf>("if");

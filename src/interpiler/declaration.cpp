@@ -2,6 +2,7 @@
 #include "declaration.hpp"
 #include "../debug.hpp"
 #include "standard.hpp"
+#include <algorithm>
 
 Declaration::Declaration(const std::string& _name, const std::unique_ptr<Type>& _type, bool _defined,
     const std::optional<std::string>& _header, bool _constant)
@@ -59,6 +60,7 @@ void Declarations::add(const Declaration& declaration)
 {
     const std::string& name = declaration.getName();
     aassert(!records.contains(name), "'" << name << "' is the name of a struct");
+    aassert(!enums.contains(name), "'" << name << "' is the name of an enum");
     auto it = declarations.find(name);
     if (it == declarations.end()) {
         declarations.try_emplace(name, declaration);
@@ -86,6 +88,15 @@ const Declaration& Declarations::get(const std::string& name) const
     auto it = declarations.find(name);
     aassert(it != declarations.end(), "Declaration '" << name << "' not found");
     return it->second;
+}
+
+std::vector<std::string> Declarations::names() const
+{
+    std::vector<std::string> result;
+    for (const auto& [name, declaration] : declarations)
+        result.push_back(name);
+    std::sort(result.begin(), result.end());
+    return result;
 }
 
 const Declaration& Declarations::use(const std::string& name)
@@ -191,6 +202,32 @@ std::vector<std::string> Declarations::undefined_labels() const
             if (!labels->defined.contains(name))
                 undefined.push_back(name);
     return undefined;
+}
+
+void Declarations::add_enum(const std::string& name, const std::vector<std::string>& constants)
+{
+    aassert(!enums.contains(name), "Redefinition of enum '" << name << "'");
+    enums.emplace(name, constants);
+}
+
+bool Declarations::is_enum(const std::string& name) const
+{
+    return enums.contains(name);
+}
+
+const std::vector<std::string>& Declarations::get_enum_constants(const std::string& name) const
+{
+    auto it = enums.find(name);
+    aassert(it != enums.end(), "Enum '" << name << "' not found");
+    return it->second;
+}
+
+std::vector<std::string> Declarations::enum_names() const
+{
+    std::vector<std::string> names;
+    for (const auto& [name, constants] : enums)
+        names.push_back(name);
+    return names;
 }
 
 Records& Declarations::get_records()

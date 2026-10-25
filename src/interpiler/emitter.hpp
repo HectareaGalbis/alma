@@ -87,6 +87,18 @@ public:
         ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
 };
 
+/** (enum Color RED GREEN (BLUE 5)) defines an enum: typedef enum Color { RED, GREEN, BLUE = 5 } Color;
+    The enum is an integer type and its constants are int constants. The value of a constant must be
+    a constant integer and can use the previous constants. C does not allow to declare an enum without
+    defining it. */
+class EmitterEnum : public Emitter {
+public:
+    EmitterEnum();
+
+    void emit_top_level(ObjectRef<Object> self, const std::vector<ObjectRef<Object>>& arg_list,
+        ObjectRef<Environment> environment, Declarations& declarations, std::stringstream& output) override;
+};
+
 /** (block statement...) -> { statement... } */
 class EmitterBlock : public Emitter {
 public:

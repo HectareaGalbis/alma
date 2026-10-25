@@ -40,6 +40,8 @@ public:
     void add(const Record& record);
     bool contains(const std::string& name) const;
     const Record& get(const std::string& name) const;
+    /** Names of all the structs and unions, sorted */
+    std::vector<std::string> names() const;
 
     template <typename... Args>
     void emplace(Args&&... args)

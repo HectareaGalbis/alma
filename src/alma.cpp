@@ -27,6 +27,7 @@ Alma Alma::alma;
 
 void Alma::intern_functions()
 {
+    // Alma
     intern_function(Sum, "+");
     intern_function(Print, "print");
     // intern_function(Type, "type");
@@ -36,8 +37,49 @@ void Alma::intern_functions()
     intern_function(Setq, "setq");
     intern_function(Eq, "eq");
     intern_function(Eval, "eval");
-    intern_function(Emit, "emit");
     intern_function(List, "list");
+
+    // C: emission
+    intern_function(Emit, "emit");
+
+    // C: introspection of kinds of declarations
+    intern_function(C_declared_p, "c-declared-p");
+    intern_function(C_defined_p, "c-defined-p");
+    intern_function(C_function_p, "c-function-p");
+    intern_function(C_variable_p, "c-variable-p");
+    intern_function(C_constant_p, "c-constant-p");
+    intern_function(C_standard_p, "c-standard-p");
+    intern_function(C_struct_p, "c-struct-p");
+    intern_function(C_union_p, "c-union-p");
+    intern_function(C_macro_p, "c-macro-p");
+
+    // C: introspection of functions and variables
+    intern_function(C_type, "c-type");
+    intern_function(C_header, "c-header");
+    intern_function(C_function_result, "c-function-result");
+    intern_function(C_function_parameters, "c-function-parameters");
+    intern_function(C_function_variadic_p, "c-function-variadic-p");
+
+    // C: introspection of structs and unions
+    intern_function(C_record_defined_p, "c-record-defined-p");
+    intern_function(C_record_members, "c-record-members");
+    intern_function(C_member_type, "c-member-type");
+
+    // C: introspection of enums
+    intern_function(C_enum_p, "c-enum-p");
+    intern_function(C_enum_constants, "c-enum-constants");
+
+    // C: introspection of types
+    intern_function(C_type_string, "c-type-string");
+    intern_function(C_pointer_p, "c-pointer-p");
+    intern_function(C_array_p, "c-array-p");
+    intern_function(C_const_p, "c-const-p");
+
+    // C: introspection with lists of names
+    intern_function(C_functions, "c-functions");
+    intern_function(C_variables, "c-variables");
+    intern_function(C_records, "c-records");
+    intern_function(C_enums, "c-enums");
 }
 
 static void intern_selfevaluating_symbol(Alma& alma, const std::string& name)

@@ -33,6 +33,9 @@ Name name -> T := name T
 
 class Pointer {
 public:
+    /** char *const p */
+    bool constant = false;
+
     bool operator==(const Pointer&) const = default;
 };
 class Dimension {
@@ -67,6 +70,8 @@ public:
 
     virtual std::unique_ptr<Type> clone() const = 0;
     virtual std::string to_string(const std::string& core) const = 0;
+    /** Write the type with the syntax of alma, the inverse of parse_object */
+    virtual ObjectRef<Object> to_object() const = 0;
     virtual bool is_function() const = 0;
     virtual bool is_pointer() const = 0;
     virtual bool is_array() const = 0;
@@ -80,9 +85,11 @@ class ValueType : public Type {
 private:
     std::string name;
     std::vector<Specifier> specifiers;
+    /** const char *p */
+    bool constant;
 
 public:
-    ValueType(const std::string& name, const std::vector<Specifier>& specifiers = {});
+    ValueType(const std::string& name, const std::vector<Specifier>& specifiers = {}, bool constant = false);
     ValueType(const ValueType& other);
 
     bool operator==(const Type& other) const override;
@@ -91,6 +98,7 @@ public:
 
     std::unique_ptr<Type> clone() const override;
     std::string to_string(const std::string& core) const override;
+    ObjectRef<Object> to_object() const override;
     bool is_function() const override;
     bool is_pointer() const override;
     bool is_array() const override;
@@ -98,6 +106,8 @@ public:
 
     const std::string& get_name() const;
     const std::vector<Specifier>& get_specifiers() const;
+    /** The type name is const qualified: const int, const char *... */
+    bool is_name_const() const;
     bool is_void() const;
     bool is_void_pointer() const;
     bool is_arithmetic() const;
@@ -121,6 +131,7 @@ public:
 
     std::unique_ptr<Type> clone() const override;
     std::string to_string(const std::string& core) const override;
+    ObjectRef<Object> to_object() const override;
     bool is_function() const override;
     bool is_pointer() const override;
     bool is_array() const override;
@@ -134,6 +145,9 @@ public:
     /** Return the declarator of a function with named parameters, e.g. "main(int argc, char **argv)" */
     std::string to_string(const std::string& core, const std::vector<std::string>& argument_names) const;
 };
+
+/** Register the name of an enum, so its type is an integer type like int */
+void declare_enum_type(const std::string& name);
 
 /** Check if a value of type 'from' can be used where a value of type 'to' is expected,
     following the basic C conversion rules */
@@ -153,5 +167,11 @@ std::unique_ptr<Type> arithmetic_conversion(const Type& a, const Type& b);
 std::unique_ptr<Type> pointer_to(const Type& type);
 /** Type pointed by a pointer. The type must be a pointer. */
 std::unique_ptr<Type> pointee(const Type& pointer);
-/** Both types are pointers to the same type or one of them is void * */
+/** Both types are pointers to the same type or one of them is void *, ignoring qualifiers */
 bool are_compatible_pointers(const Type& a, const Type& b);
+
+/** The type itself is const qualified. For an array, its elements are const. */
+bool is_const(const Type& type);
+/** The same type with or without the const qualifier of the type itself */
+std::unique_ptr<Type> unqualified(const Type& type);
+std::unique_ptr<Type> qualified(const Type& type);

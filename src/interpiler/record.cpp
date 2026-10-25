@@ -1,6 +1,7 @@
 
 #include "record.hpp"
 #include "../debug.hpp"
+#include <algorithm>
 
 static Record::Members cloneMembers(const Record::Members& members)
 {
@@ -78,6 +79,15 @@ void Records::add(const Record& record)
 }
 
 bool Records::contains(const std::string& name) const { return records.contains(name); }
+
+std::vector<std::string> Records::names() const
+{
+    std::vector<std::string> result;
+    for (const auto& [name, record] : records)
+        result.push_back(name);
+    std::sort(result.begin(), result.end());
+    return result;
+}
 
 const Record& Records::get(const std::string& name) const
 {

@@ -6,7 +6,14 @@
 #include "integer.hpp"
 #include "object.hpp"
 #include "package.hpp"
+#include "string.hpp"
+#include "symbol.hpp"
+#include "interpiler/declaration.hpp"
 #include <iostream>
+
+// ================================================================================
+// Alma
+// ================================================================================
 
 // --------------------------------------------------------------------------------
 
@@ -115,7 +122,9 @@ ObjectRef<Object> List::eval_body(
     return Alma::alma.make<Cons>(arg_list);
 }
 
-// --------------------------------------------------------------------------------
+// ================================================================================
+// C: emission
+// ================================================================================
 
 ObjectRef<Object> Emit::eval_body(
     const std::vector<ObjectRef<Object>>& arg_list,
@@ -124,4 +133,298 @@ ObjectRef<Object> Emit::eval_body(
     for (const ObjectRef<Object>& arg : arg_list)
         Alma::alma.emit(arg);
     return Alma::alma.boolean(false);
+}
+
+// ================================================================================
+// C: introspection
+// ================================================================================
+
+// --------------------------------------------------------------------------------
+// C: introspection helpers
+
+using Arguments = std::vector<ObjectRef<Object>>;
+
+static ObjectRef<Object> symbol(const std::string& name)
+{
+    return Alma::alma.intern_alma_symbol(name);
+}
+
+static ObjectRef<Object> boolean(bool value)
+{
+    return Alma::alma.boolean(value);
+}
+
+static ObjectRef<Object> nil()
+{
+    return Alma::alma.intern_alma_symbol("nil");
+}
+
+static ObjectRef<Object> make_list(const std::vector<ObjectRef<Object>>& elements)
+{
+    if (elements.empty())
+        return nil();
+    return Alma::alma.make<Cons>(elements);
+}
+
+static std::string name_of(const ObjectRef<Object>& obj)
+{
+    return obj.as<Symbol>()->get_name();
+}
+
+static const Declaration* find_declaration(const std::string& name)
+{
+    Declarations& declarations = Alma::alma.get_declarations();
+    return declarations.contains(name) ? &declarations.get(name) : nullptr;
+}
+
+static const Record* find_record(const std::string& name)
+{
+    const Records& records = Alma::alma.get_declarations().get_records();
+    return records.contains(name) ? &records.get(name) : nullptr;
+}
+
+static const FunctionType* find_function(const std::string& name)
+{
+    const Declaration* declaration = find_declaration(name);
+    if (!declaration || !declaration->getType()->is_function())
+        return nullptr;
+    return static_cast<const FunctionType*>(declaration->getType());
+}
+
+// --------------------------------------------------------------------------------
+// C: introspection of kinds of declarations
+
+ObjectRef<Object> C_declared_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    return boolean(find_declaration(name_of(arg_list[0])) != nullptr);
+}
+
+ObjectRef<Object> C_defined_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Declaration* declaration = find_declaration(name_of(arg_list[0]));
+    return boolean(declaration && declaration->isDefined());
+}
+
+ObjectRef<Object> C_function_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    return boolean(find_function(name_of(arg_list[0])) != nullptr);
+}
+
+ObjectRef<Object> C_variable_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Declaration* declaration = find_declaration(name_of(arg_list[0]));
+    return boolean(declaration && !declaration->getType()->is_function() && !declaration->isConstant());
+}
+
+ObjectRef<Object> C_constant_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Declaration* declaration = find_declaration(name_of(arg_list[0]));
+    return boolean(declaration && declaration->isConstant());
+}
+
+ObjectRef<Object> C_standard_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Declaration* declaration = find_declaration(name_of(arg_list[0]));
+    return boolean(declaration && declaration->getHeader());
+}
+
+ObjectRef<Object> C_struct_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Record* record = find_record(name_of(arg_list[0]));
+    return boolean(record && !record->isUnion());
+}
+
+ObjectRef<Object> C_union_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Record* record = find_record(name_of(arg_list[0]));
+    return boolean(record && record->isUnion());
+}
+
+ObjectRef<Object> C_macro_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    ObjectRef<Symbol> name(arg_list[0]);
+    return boolean(name->has_property(Alma::alma.intern_alma_symbol("macro")));
+}
+
+// --------------------------------------------------------------------------------
+// C: introspection of functions and variables
+
+ObjectRef<Object> C_type::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Declaration* declaration = find_declaration(name_of(arg_list[0]));
+    return declaration ? declaration->getType()->to_object() : nil();
+}
+
+ObjectRef<Object> C_header::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Declaration* declaration = find_declaration(name_of(arg_list[0]));
+    if (!declaration || !declaration->getHeader())
+        return nil();
+    return Alma::alma.make<String>(*declaration->getHeader());
+}
+
+ObjectRef<Object> C_function_result::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const FunctionType* function = find_function(name_of(arg_list[0]));
+    return function ? function->get_result().to_object() : nil();
+}
+
+ObjectRef<Object> C_function_parameters::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const FunctionType* function = find_function(name_of(arg_list[0]));
+    if (!function)
+        return nil();
+    std::vector<ObjectRef<Object>> parameters;
+    for (const std::unique_ptr<Type>& parameter : function->get_arguments())
+        parameters.push_back(parameter->to_object());
+    return make_list(parameters);
+}
+
+ObjectRef<Object> C_function_variadic_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const FunctionType* function = find_function(name_of(arg_list[0]));
+    return boolean(function && function->is_variadic());
+}
+
+// --------------------------------------------------------------------------------
+// C: introspection of structs and unions
+
+ObjectRef<Object> C_record_defined_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Record* record = find_record(name_of(arg_list[0]));
+    return boolean(record && record->isDefined());
+}
+
+ObjectRef<Object> C_record_members::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    const Record* record = find_record(name_of(arg_list[0]));
+    if (!record)
+        return nil();
+    std::vector<ObjectRef<Object>> members;
+    for (const auto& [name, type] : record->getMembers())
+        members.push_back(make_list({ symbol(name), type->to_object() }));
+    return make_list(members);
+}
+
+ObjectRef<Object> C_member_type::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol", "symbol" });
+    const Record* record = find_record(name_of(arg_list[0]));
+    if (!record)
+        return nil();
+    std::string member = name_of(arg_list[1]);
+    for (const auto& [name, type] : record->getMembers())
+        if (name == member)
+            return type->to_object();
+    return nil();
+}
+
+// --------------------------------------------------------------------------------
+// C: introspection of enums
+
+ObjectRef<Object> C_enum_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    return boolean(Alma::alma.get_declarations().is_enum(name_of(arg_list[0])));
+}
+
+ObjectRef<Object> C_enum_constants::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    Declarations& declarations = Alma::alma.get_declarations();
+    std::string name = name_of(arg_list[0]);
+    if (!declarations.is_enum(name))
+        return nil();
+    std::vector<ObjectRef<Object>> constants;
+    for (const std::string& constant : declarations.get_enum_constants(name))
+        constants.push_back(symbol(constant));
+    return make_list(constants);
+}
+
+// --------------------------------------------------------------------------------
+// C: introspection of types, written with the syntax of alma
+
+ObjectRef<Object> C_type_string::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.make<String>(Type::parse_object(arg_list[0])->to_string(""));
+}
+
+ObjectRef<Object> C_pointer_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return boolean(Type::parse_object(arg_list[0])->is_pointer());
+}
+
+ObjectRef<Object> C_array_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return boolean(Type::parse_object(arg_list[0])->is_array());
+}
+
+ObjectRef<Object> C_const_p::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return boolean(is_const(*Type::parse_object(arg_list[0])));
+}
+
+// --------------------------------------------------------------------------------
+// C: introspection with lists of names. They do not include the standard library.
+
+static ObjectRef<Object> declaration_names(bool functions)
+{
+    Declarations& declarations = Alma::alma.get_declarations();
+    std::vector<ObjectRef<Object>> names;
+    for (const std::string& name : declarations.names()) {
+        const Declaration& declaration = declarations.get(name);
+        if (!declaration.getHeader() && declaration.getType()->is_function() == functions)
+            names.push_back(symbol(name));
+    }
+    return make_list(names);
+}
+
+ObjectRef<Object> C_functions::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, {});
+    return declaration_names(true);
+}
+
+ObjectRef<Object> C_variables::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, {});
+    return declaration_names(false);
+}
+
+ObjectRef<Object> C_records::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, {});
+    std::vector<ObjectRef<Object>> names;
+    for (const std::string& name : Alma::alma.get_declarations().get_records().names())
+        names.push_back(symbol(name));
+    return make_list(names);
+}
+
+ObjectRef<Object> C_enums::eval_body(const Arguments& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, {});
+    std::vector<ObjectRef<Object>> names;
+    for (const std::string& name : Alma::alma.get_declarations().enum_names())
+        names.push_back(symbol(name));
+    return make_list(names);
 }

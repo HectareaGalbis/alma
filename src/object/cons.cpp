@@ -164,7 +164,8 @@ static std::unique_ptr<Type> emit_member_access(ObjectRef<Object> base, const st
         aassert(member_type, "The " << keyword << " " << record->getName() << " has no member " << member_name);
 
         output << (pointer ? "->" : ".") << member_name;
-        type = member_type->clone();
+        // The members of a const struct are const
+        type = is_const(*struct_type) ? qualified(*member_type) : member_type->clone();
     }
     return type;
 }

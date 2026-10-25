@@ -78,7 +78,8 @@ static std::optional<std::string> symbol_name(const ObjectRef<Object>& obj)
 static bool is_lvalue(const ObjectRef<Object>& obj, const Declarations& declarations)
 {
     if (std::optional<std::string> name = symbol_name(obj))
-        return declarations.contains(*name) && !declarations.get(*name).getType()->is_function();
+        return declarations.contains(*name) && !declarations.get(*name).getType()->is_function()
+            && !declarations.get(*name).isConstant();
     if (!Alma::alma.consp(obj))
         return false;
     auto [list, tail] = obj.as<Cons>()->to_list();
@@ -103,6 +104,8 @@ static void check_modifiable(const std::string& name, const ObjectRef<Object>& o
 {
     aassert(is_lvalue(obj, declarations) && !type.is_array() && !type.is_function(),
         "The operand of '" << name << "' must be modifiable but found " << Alma::alma.to_string(obj));
+    aassert(!is_const(type),
+        "The operand of '" << name << "' cannot be modified because it is const: " << Alma::alma.to_string(obj));
 }
 
 // -----------------------------------------------------------------------------
@@ -118,7 +121,8 @@ static std::unique_ptr<Type> additive_type(const std::string& name, bool plus, c
         return decayed_a;
     if (plus && is_integer(*decayed_a) && is_object_pointer(*decayed_b))
         return decayed_b;
-    if (!plus && is_object_pointer(*decayed_a) && *decayed_a == *decayed_b)
+    if (!plus && is_object_pointer(*decayed_a) && is_object_pointer(*decayed_b)
+        && *unqualified(*pointee(*decayed_a)) == *unqualified(*pointee(*decayed_b)))
         return std::make_unique<ValueType>("ptrdiff_t");
     invalid_operands(name, a, b);
 }
@@ -497,10 +501,13 @@ public:
             invalid_operand(get_name(), *condition);
         if (is_arithmetic(*a) && is_arithmetic(*b))
             return arithmetic_conversion(*a, *b);
-        if (*a == *b)
-            return a;
-        if (are_compatible_pointers(*a, *b))
-            return std::make_unique<ValueType>("void", std::vector<Specifier> { Pointer {} });
+        if (*unqualified(*a) == *unqualified(*b))
+            return unqualified(*a);
+        if (are_compatible_pointers(*a, *b)) {
+            // A pointer to void that keeps the const of any of both
+            bool constant = is_const(*pointee(*a)) || is_const(*pointee(*b));
+            return std::make_unique<ValueType>("void", std::vector<Specifier> { Pointer {} }, constant);
+        }
         invalid_operands(get_name(), *a, *b);
     }
 };

@@ -20,6 +20,7 @@ void intern_macros()
     intern_macro<emit_variable>("variable");
     intern_macro<emit_struct>("struct");
     intern_macro<emit_union>("union");
+    intern_macro<emit_enum>("enum");
 }
 
 // --------------------------------------------------------------------------------
@@ -97,4 +98,10 @@ ObjectRef<Object> emit_union::eval_body(
     const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
 {
     return emit_form("union", arg_list);
+}
+
+ObjectRef<Object> emit_enum::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return emit_form("enum", arg_list);
 }

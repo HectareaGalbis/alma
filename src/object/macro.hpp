@@ -22,9 +22,10 @@ void intern_macros();
 declare_macro(defun);
 declare_macro(defmacro);
 
-// (function ...), (macro ...), (variable ...), (struct ...) and (union ...) expand to (emit '(...))
+// (function ...), (macro ...), (variable ...), (struct ...), (union ...) and (enum ...) expand to (emit '(...))
 declare_macro(emit_function);
 declare_macro(emit_macro);
 declare_macro(emit_variable);
 declare_macro(emit_struct);
 declare_macro(emit_union);
+declare_macro(emit_enum);

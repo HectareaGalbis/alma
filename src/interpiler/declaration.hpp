@@ -3,6 +3,7 @@
 
 #include "record.hpp"
 #include "type.hpp"
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -45,6 +46,8 @@ private:
     std::optional<Declaration> function;
     std::shared_ptr<std::set<std::string>> headers = std::make_shared<std::set<std::string>>();
     Records records;
+    /** Names of the constants of each enum */
+    std::map<std::string, std::vector<std::string>> enums;
     bool in_loop = false;
     bool in_switch = false;
 
@@ -61,6 +64,8 @@ public:
     void add(const Declaration& declaration);
     bool contains(const std::string& name) const;
     const Declaration& get(const std::string& name) const;
+    /** Names of all the declarations, sorted */
+    std::vector<std::string> names() const;
 
     /** Like get, but remembers the header of the declaration to include it in the output */
     const Declaration& use(const std::string& name);
@@ -104,6 +109,12 @@ public:
     /** Structures declared or defined */
     Records& get_records();
     const Records& get_records() const;
+
+    /** Enums and the names of their constants */
+    void add_enum(const std::string& name, const std::vector<std::string>& constants);
+    bool is_enum(const std::string& name) const;
+    const std::vector<std::string>& get_enum_constants(const std::string& name) const;
+    std::vector<std::string> enum_names() const;
 
     /** Return the structure of a type, if it is the name of a declared structure */
     const Record* get_record(const Type& type) const;
