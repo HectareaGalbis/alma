@@ -34,6 +34,36 @@ declare_function(Eval);
 declare_function(List);
 
 // -----------------------------------------------------------------------------
+// Alma: vectors
+//
+//   (vector 1 2 3)                 -> [1 2 3]
+//   (make-vector 3 0)              -> [0 0 0]
+//   (v 0)                          -> the element 0, applying the vector to the index
+//   (vector-set v 0 x)
+//   (vector-push-back v x) (vector-pop-front v) ...
+//
+// The functions that modify a vector return the vector, except the ones that remove an element,
+// that return the element.
+
+declare_function(Vector_create);
+declare_function(Make_vector);
+declare_function(Vectorp);
+declare_function(Vector_length);
+declare_function(Vector_empty_p);
+declare_function(Vector_set);
+declare_function(Vector_front);
+declare_function(Vector_back);
+declare_function(Vector_push_front);
+declare_function(Vector_push_back);
+declare_function(Vector_pop_front);
+declare_function(Vector_pop_back);
+declare_function(Vector_insert);
+declare_function(Vector_erase);
+declare_function(Vector_clear);
+declare_function(Vector_to_list);
+declare_function(List_to_vector);
+
+// -----------------------------------------------------------------------------
 // C: emission
 
 declare_function(Emit);

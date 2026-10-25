@@ -8,6 +8,7 @@
 #include "package.hpp"
 #include "string.hpp"
 #include "symbol.hpp"
+#include "vector.hpp"
 #include "interpiler/declaration.hpp"
 #include <iostream>
 
@@ -120,6 +121,155 @@ ObjectRef<Object> List::eval_body(
     if (arg_list.empty())
         return Alma::alma.intern_alma_symbol("nil");
     return Alma::alma.make<Cons>(arg_list);
+}
+
+// ================================================================================
+// Alma: vectors
+// ================================================================================
+
+static ObjectRef<Vector> as_vector(const ObjectRef<Object>& obj)
+{
+    return ObjectRef<Vector>(obj);
+}
+
+static size_t as_index(const ObjectRef<Object>& obj)
+{
+    int64_t index = obj.as<Integer>()->get_value();
+    aassert(index >= 0, "The index of a vector cannot be negative: " << index);
+    return static_cast<size_t>(index);
+}
+
+ObjectRef<Object> Vector_create::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    return Alma::alma.make<Vector>(arg_list);
+}
+
+ObjectRef<Object> Make_vector::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "integer" }, "t");
+    aassert(arg_list.size() <= 2, "make-vector expects a size and optionally an initial value");
+    ObjectRef<Object> initial = arg_list.size() == 2 ? arg_list[1] : Alma::alma.intern_alma_symbol("nil");
+    return Alma::alma.make<Vector>(std::vector<ObjectRef<Object>>(as_index(arg_list[0]), initial));
+}
+
+ObjectRef<Object> Vectorp::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.boolean(Alma::alma.typep(arg_list[0], Alma::alma.intern_alma_symbol("vector")));
+}
+
+ObjectRef<Object> Vector_length::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    return Alma::alma.make<Integer>(static_cast<int64_t>(as_vector(arg_list[0])->size()));
+}
+
+ObjectRef<Object> Vector_empty_p::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    return Alma::alma.boolean(as_vector(arg_list[0])->size() == 0);
+}
+
+ObjectRef<Object> Vector_set::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector", "integer", "t" });
+    as_vector(arg_list[0])->set(as_index(arg_list[1]), arg_list[2]);
+    return arg_list[0];
+}
+
+ObjectRef<Object> Vector_front::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    return as_vector(arg_list[0])->front();
+}
+
+ObjectRef<Object> Vector_back::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    return as_vector(arg_list[0])->back();
+}
+
+ObjectRef<Object> Vector_push_front::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector", "t" });
+    as_vector(arg_list[0])->push_front(arg_list[1]);
+    return arg_list[0];
+}
+
+ObjectRef<Object> Vector_push_back::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector", "t" });
+    as_vector(arg_list[0])->push_back(arg_list[1]);
+    return arg_list[0];
+}
+
+ObjectRef<Object> Vector_pop_front::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    return as_vector(arg_list[0])->pop_front();
+}
+
+ObjectRef<Object> Vector_pop_back::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    return as_vector(arg_list[0])->pop_back();
+}
+
+ObjectRef<Object> Vector_insert::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector", "integer", "t" });
+    as_vector(arg_list[0])->insert(as_index(arg_list[1]), arg_list[2]);
+    return arg_list[0];
+}
+
+ObjectRef<Object> Vector_erase::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector", "integer" });
+    return as_vector(arg_list[0])->erase(as_index(arg_list[1]));
+}
+
+ObjectRef<Object> Vector_clear::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    as_vector(arg_list[0])->clear();
+    return arg_list[0];
+}
+
+ObjectRef<Object> Vector_to_list::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "vector" });
+    std::vector<ObjectRef<Object>> elements = as_vector(arg_list[0])->to_vector();
+    if (elements.empty())
+        return Alma::alma.intern_alma_symbol("nil");
+    return Alma::alma.make<Cons>(elements);
+}
+
+ObjectRef<Object> List_to_vector::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    if (Alma::alma.null(arg_list[0]))
+        return Alma::alma.make<Vector>(std::vector<ObjectRef<Object>> {});
+    aassert(Alma::alma.consp(arg_list[0]), "Expected a list but found " << Alma::alma.to_string(arg_list[0]));
+    auto [list, tail] = arg_list[0].as<Cons>()->to_list();
+    aassert(Alma::alma.null(tail), "Expected a proper list but found " << Alma::alma.to_string(arg_list[0]));
+    return Alma::alma.make<Vector>(list);
 }
 
 // ================================================================================

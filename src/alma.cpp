@@ -39,6 +39,25 @@ void Alma::intern_functions()
     intern_function(Eval, "eval");
     intern_function(List, "list");
 
+    // Alma: vectors
+    intern_function(Vector_create, "vector");
+    intern_function(Make_vector, "make-vector");
+    intern_function(Vectorp, "vectorp");
+    intern_function(Vector_length, "vector-length");
+    intern_function(Vector_empty_p, "vector-empty-p");
+    intern_function(Vector_set, "vector-set");
+    intern_function(Vector_front, "vector-front");
+    intern_function(Vector_back, "vector-back");
+    intern_function(Vector_push_front, "vector-push-front");
+    intern_function(Vector_push_back, "vector-push-back");
+    intern_function(Vector_pop_front, "vector-pop-front");
+    intern_function(Vector_pop_back, "vector-pop-back");
+    intern_function(Vector_insert, "vector-insert");
+    intern_function(Vector_erase, "vector-erase");
+    intern_function(Vector_clear, "vector-clear");
+    intern_function(Vector_to_list, "vector-to-list");
+    intern_function(List_to_vector, "list-to-vector");
+
     // C: emission
     intern_function(Emit, "emit");
 
