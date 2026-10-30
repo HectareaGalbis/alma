@@ -547,6 +547,14 @@ ObjectRef<Object> Alma::set_symbol_value(ObjectRef<Symbol> symbol, ObjectRef<Obj
     return value;
 }
 
+bool Alma::keywordp(ObjectRef<Object> obj)
+{
+    if (!this->symbolp(obj))
+        return false;
+    std::optional<ObjectRef<Package>> home = obj.as<Symbol>()->get_home_package();
+    return home && *home == this->keyword_package;
+}
+
 bool Alma::consp(ObjectRef<Object> obj)
 {
     return this->type(obj) == this->intern_alma_symbol("cons");

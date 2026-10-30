@@ -159,6 +159,9 @@ public:
     /** Set the value of a symbol */
     ObjectRef<Object> set_symbol_value(ObjectRef<Symbol> symbol, ObjectRef<Object> value);
 
+    /** Check if an object is a symbol of the keyword package */
+    bool keywordp(ObjectRef<Object> obj);
+
     /** Check if an object is a cons */
     bool consp(ObjectRef<Object> obj);
 

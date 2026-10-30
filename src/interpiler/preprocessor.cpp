@@ -55,8 +55,6 @@ void EmitterMacro::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
     aassert(alma.symbolp(arg_list[0]), "The name of a macro must be a symbol but found " << alma.to_string(arg_list[0]));
     ObjectRef<Symbol> macro_name(arg_list[0]);
 
-    std::vector<ObjectRef<Object>> parameters;
-    std::optional<ObjectRef<Object>> rest;
     if (!alma.null(arg_list[1])) {
         aassert(alma.consp(arg_list[1]), "Expected a list of parameters but found " << alma.to_string(arg_list[1]));
         auto [list, tail] = arg_list[1].as<Cons>()->to_list();
@@ -66,15 +64,13 @@ void EmitterMacro::emit_top_level(ObjectRef<Object> self [[maybe_unused]],
             if (list[i].as<Symbol>()->get_name() == "&rest") {
                 aassert(i + 2 == list.size() && alma.symbolp(list[i + 1]),
                     "&rest must be followed by the last parameter in " << alma.to_string(arg_list[1]));
-                rest = list[i + 1];
                 break;
             }
-            parameters.push_back(list[i]);
         }
     }
 
     std::vector<ObjectRef<Object>> body(arg_list.begin() + 2, arg_list.end());
-    ObjectRef<FunctionUser> function = alma.make<FunctionUser>(parameters, rest, environment, body);
+    ObjectRef<FunctionUser> function = alma.make<FunctionUser>(arg_list[1], environment, body);
     ObjectRef<PreprocessorMacro> macro = alma.make<PreprocessorMacro>(function, environment);
 
     if (macro_name->has_property(macro_property()))

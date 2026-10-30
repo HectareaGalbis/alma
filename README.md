@@ -227,6 +227,40 @@ Todo lo que no es C se ejecuta al compilar. Además de los vectores, ALMA tiene:
 (print (cita (a b c)))                   ; escribe (a b c)
 ```
 
+#### Lista de parámetros
+
+`defun`, `lambda`, `defmacro` y `defspecial` aceptan la misma lista de parámetros:
+
+| Parámetro | Descripción |
+|---|---|
+| `a` | obligatorio |
+| `(b defecto b-p)` | opcional; `defecto` y `b-p` se pueden omitir. `b-p` es `t` si se pasó el argumento |
+| `:k x`, `:k (x defecto x-p)` | por keyword: se pasa como `:k valor` |
+| `&rest r` | lista con los argumentos que sobran tras los opcionales |
+| `&rest-keys otras` | tabla hash (`eql`) con los keywords recibidos que no están declarados |
+
+Los obligatorios, los opcionales y los keywords van en ese orden; `&rest` y
+`&rest-keys` pueden ir en cualquier posición. Un opcional o keyword sin valor por
+defecto vale `nil`. Los valores por defecto se evalúan en cada llamada y pueden
+usar los parámetros anteriores.
+
+En la llamada, los keywords se buscan después de los argumentos obligatorios y
+opcionales, mezclados con los del `&rest`, y nunca se meten en él. Un keyword no
+declarado es un error salvo que haya `&rest-keys`, y repetir un keyword también
+es un error. Si no se declara ningún keyword ni `&rest-keys`, los keywords son
+valores normales.
+
+```lisp
+(defun f (a (b 10) (c (+ a b) c-p) :k x :j (y 5 y-p) &rest r &rest-keys otras)
+  (list a b c c-p x y y-p r otras))
+
+(f 1)                    ; (1 10 11 nil nil 5 nil nil <hash-table eql 0>)
+(f 1 2 3 4 :k 7 5 :z 9)  ; (1 2 3 t 7 5 nil (4 5) <hash-table eql 1>)
+
+(defun g (a &rest r) (list a r))
+(g 1 :k 2)               ; (1 (:k 2))
+```
+
 ### Cargar archivos
 
 `load` ejecuta otro archivo de ALMA como si su contenido estuviera en el punto

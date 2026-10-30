@@ -71,10 +71,52 @@ public:
 
 // -----------------------------------------------------------------------------
 
+/** The parameters of a user procedure, in this order:
+
+      a                           required
+      (b default b-p)             optional, with its default value and if it was received
+      :k c   :k (c default c-p)   by keyword
+
+    &rest r and &rest-keys h can be anywhere. After the required and optional arguments, a
+    keyword followed by a value is a keyword argument, and the rest of arguments go to &rest.
+    &rest-keys is a hash table with the keyword arguments that are not parameters; without it
+    they are an error. If there are no keyword parameters nor &rest-keys, the keywords are
+    normal arguments. The default values are evaluated in each call, after the previous
+    parameters are bound */
+class LambdaList {
+private:
+    struct Parameter {
+        Symbol* var;
+        Object* default_form;
+        Symbol* supplied;
+        Symbol* keyword;
+    };
+
+    Object& owner;
+    std::vector<ObjectTrackedKeyRef<Object>> objects;
+    std::vector<Parameter> required;
+    std::vector<Parameter> optional;
+    std::vector<Parameter> keys;
+    Symbol* rest;
+    Symbol* rest_keys;
+
+    Symbol* keep_variable(ObjectRef<Object> obj, std::vector<Symbol*>& names);
+    Parameter parse_parameter(ObjectRef<Object> obj, bool allow_symbol, std::vector<Symbol*>& names);
+
+public:
+    LambdaList(Object& owner, ObjectRef<Object> spec);
+    LambdaList(const LambdaList&) = delete;
+    LambdaList& operator=(const LambdaList&) = delete;
+
+    /** Bind the arguments in the current layer of the environment */
+    void bind(const std::vector<ObjectRef<Object>>& arg_list, ObjectRef<Environment> environment) const;
+};
+
+// -----------------------------------------------------------------------------
+
 class FunctionUser : public Function {
 private:
-    std::vector<ObjectTrackedKeyRef<Symbol>> param_list;
-    std::optional<ObjectTrackedRef<Symbol>> param_rest;
+    LambdaList lambda_list;
     mutable ObjectTrackedRef<Environment> closure;
     std::vector<ObjectTrackedKeyRef<Object>> body;
 
@@ -85,8 +127,7 @@ protected:
 
 public:
     FunctionUser(
-        const std::vector<ObjectRef<Object>>& param_list,
-        const std::optional<ObjectRef<Object>>& param_rest,
+        ObjectRef<Object> lambda_list,
         ObjectRef<Environment> closure,
         const std::vector<ObjectRef<Object>>& body);
 
@@ -98,8 +139,7 @@ public:
 
 class MacroUser : public Macro {
 private:
-    std::vector<ObjectTrackedKeyRef<Symbol>> param_list;
-    std::optional<ObjectTrackedRef<Symbol>> param_rest;
+    LambdaList lambda_list;
     mutable ObjectTrackedRef<Environment> closure;
     std::vector<ObjectTrackedKeyRef<Object>> body;
 
@@ -110,8 +150,7 @@ protected:
 
 public:
     MacroUser(
-        const std::vector<ObjectRef<Object>>& param_list,
-        const std::optional<ObjectRef<Object>>& param_rest,
+        ObjectRef<Object> lambda_list,
         ObjectRef<Environment> closure,
         const std::vector<ObjectRef<Object>>& body);
 
@@ -124,8 +163,7 @@ public:
 /** Like FunctionUser or MacroUser, but it does not evaluate its arguments nor its result */
 class SpecialOperatorUser : public Procedure {
 private:
-    std::vector<ObjectTrackedKeyRef<Symbol>> param_list;
-    std::optional<ObjectTrackedRef<Symbol>> param_rest;
+    LambdaList lambda_list;
     mutable ObjectTrackedRef<Environment> closure;
     std::vector<ObjectTrackedKeyRef<Object>> body;
 
@@ -136,8 +174,7 @@ protected:
 
 public:
     SpecialOperatorUser(
-        const std::vector<ObjectRef<Object>>& param_list,
-        const std::optional<ObjectRef<Object>>& param_rest,
+        ObjectRef<Object> lambda_list,
         ObjectRef<Environment> closure,
         const std::vector<ObjectRef<Object>>& body);
 

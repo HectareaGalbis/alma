@@ -197,19 +197,11 @@ ObjectRef<Object> lambda::eval_body(
 {
     massert(arg_list.size() >= 1, "Expected at least one argument.");
 
-    std::vector<ObjectRef<Object>> param_list;
-    if (!Alma::alma.null(arg_list[0])) {
-        massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
-        param_list = arg_list[0].as<Cons>()->to_list().first;
-        for (const ObjectRef<Object>& param : param_list)
-            massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
-    }
-
     std::vector<ObjectRef<Object>> body;
     for (size_t i = 1; i < arg_list.size(); i++)
         body.push_back(arg_list[i]);
 
-    return Alma::alma.make<FunctionUser>(param_list, std::nullopt, environment, body);
+    return Alma::alma.make<FunctionUser>(arg_list[0], environment, body);
 }
 
 // --------------------------------------------------------------------------------
@@ -219,19 +211,11 @@ ObjectRef<Object> gamma::eval_body(
 {
     massert(arg_list.size() >= 1, "Expected at least one argument.");
 
-    std::vector<ObjectRef<Object>> param_list;
-    if (!Alma::alma.null(arg_list[0])) {
-        massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
-        param_list = arg_list[0].as<Cons>()->to_list().first;
-        for (const ObjectRef<Object>& param : param_list)
-            massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
-    }
-
     std::vector<ObjectRef<Object>> body;
     for (size_t i = 1; i < arg_list.size(); i++)
         body.push_back(arg_list[i]);
 
-    return Alma::alma.make<MacroUser>(param_list, std::nullopt, environment, body);
+    return Alma::alma.make<MacroUser>(arg_list[0], environment, body);
 }
 
 // --------------------------------------------------------------------------------
@@ -241,19 +225,11 @@ ObjectRef<Object> alpha::eval_body(
 {
     massert(arg_list.size() >= 1, "Expected at least one argument.");
 
-    std::vector<ObjectRef<Object>> param_list;
-    if (!Alma::alma.null(arg_list[0])) {
-        massert(Alma::alma.consp(arg_list[0]), "Expected a list of symbols.");
-        param_list = arg_list[0].as<Cons>()->to_list().first;
-        for (const ObjectRef<Object>& param : param_list)
-            massert(Alma::alma.symbolp(param), "Expected a symbol as an argument.");
-    }
-
     std::vector<ObjectRef<Object>> body;
     for (size_t i = 1; i < arg_list.size(); i++)
         body.push_back(arg_list[i]);
 
-    return Alma::alma.make<SpecialOperatorUser>(param_list, std::nullopt, environment, body);
+    return Alma::alma.make<SpecialOperatorUser>(arg_list[0], environment, body);
 }
 
 // --------------------------------------------------------------------------------
