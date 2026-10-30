@@ -344,57 +344,34 @@ static std::optional<ObjectRef<Integer>> parse_number(const std::string& token, 
     return std::nullopt;
 }
 
-static std::pair<size_t, size_t> find_next_delimiter(const std::string& s, const std::vector<std::string>& delimiters, size_t start)
-{
-    for (const std::string& delimiter : delimiters) {
-        size_t end = s.find(delimiter, start);
-        if (end != std::string::npos) {
-            return { end, delimiter.size() };
-        }
-    }
-    return { std::string::npos, 0 };
-}
-
-static std::vector<std::string> splitString(const std::string& s, const std::vector<std::string>& delimiters)
-{
-    std::vector<std::string> tokens;
-    size_t start = 0;
-    while (true) {
-        auto [end, delSize] = find_next_delimiter(s, delimiters, start);
-        tokens.push_back(s.substr(start, end - start));
-        start = end + delSize;
-        if (end == std::string::npos)
-            break;
-    }
-
-    return tokens;
-}
-
-static std::vector<std::string> parse_token(const std::string& token)
-{
-    return splitString(token, { ":" }); // Order matters. Most specific first
-}
-
 // TODO: Hacer 1-lisp
 // TODO: Crear arrays [m 0 1]
 // TODO: Hacer diccionarios {a 3 b 4 c 5}
 
-ObjectRef<Symbol> Reader::Input::findSymbol(const std::vector<std::string>& splittedTokens)
+ObjectRef<Symbol> Reader::Input::find_symbol(const std::string& token)
 {
-    ObjectRef<Package> packageIt = alma.get_current_package();
-    for (size_t i = 0; i < splittedTokens.size() - 1; i++) {
-        ObjectRef<Symbol> packageSymbol = packageIt->intern_symbol(splittedTokens[i]);
-        std::optional<ObjectRef<Package>> next_package = packageSymbol->get_package();
-        if (!next_package) {
-            std::string currentSymbol;
-            for (size_t j = 0; j < i; j++)
-                currentSymbol += splittedTokens[j] + ":";
-            currentSymbol += splittedTokens[i];
-            ithrow("The symbol " << currentSymbol << " does not denote a package.");
-        }
-        packageIt = *next_package;
+    size_t colon = token.find(':');
+    if (colon == std::string::npos)
+        return alma.get_current_package()->intern_symbol(token);
+
+    if (colon == 0) {
+        std::string keyword_name = token.substr(1);
+        iassert(!keyword_name.empty() && keyword_name.find(':') == std::string::npos, "Invalid keyword " << token);
+        return alma.intern_keyword(keyword_name);
     }
-    return packageIt->intern_symbol(splittedTokens.back());
+
+    std::string package_name = token.substr(0, colon);
+    std::string symbol_name = token.substr(colon + 1);
+    iassert(symbol_name.empty() || symbol_name[0] != ':',
+        "Cannot reference " << token << ": only the exported symbols of a package can be referenced");
+    iassert(!symbol_name.empty() && symbol_name.find(':') == std::string::npos, "Invalid symbol " << token);
+    std::optional<ObjectRef<Package>> package = alma.find_package(package_name);
+    iassert(package, "The package " << package_name << " does not exist");
+    if ((*package)->is_keyword())
+        return alma.intern_keyword(symbol_name);
+    std::optional<ObjectRef<Symbol>> symbol = (*package)->find_external_symbol(symbol_name);
+    iassert(symbol, "The symbol " << symbol_name << " is not exported from the package " << package_name);
+    return *symbol;
 }
 
 std::optional<ObjectRef<Object>> Reader::Input::read_token()
@@ -416,11 +393,7 @@ std::optional<ObjectRef<Object>> Reader::Input::read_token()
     if (number)
         return number;
 
-    if (token.find(':') == std::string::npos)
-        return alma.get_current_package()->intern_symbol(token);
-
-    std::vector<std::string> splittedTokens = parse_token(token);
-    return findSymbol(splittedTokens);
+    return this->find_symbol(token);
 }
 
 #define maybe(EXPR)            \

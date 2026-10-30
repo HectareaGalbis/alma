@@ -9,6 +9,8 @@
 #include "object/object.hpp"
 #include "object/type_system.hpp"
 #include <filesystem>
+#include <map>
+#include <optional>
 #include <sstream>
 #include <vector>
 
@@ -26,7 +28,8 @@ private:
     GarbageCollector gc;
     ObjectRef<Environment> environment;
     ObjectRef<Package> alma_package;
-    ObjectRef<Package> current_package;
+    ObjectRef<Package> keyword_package;
+    std::map<std::string, ObjectRef<Package>> packages;
     ObjectRef<Nil> nil;
     ObjectRef<TypeSystem> type_system;
     std::stringstream output;
@@ -89,8 +92,28 @@ public:
     std::unique_ptr<Type> emit_expression(ObjectRef<Object> obj, ObjectRef<Environment> environment,
         Declarations& declarations, std::stringstream& output);
 
-    /** Return the current package */
+    /** Return the current package, the value of *package* */
     ObjectRef<Package> get_current_package();
+
+    /** Return the current package, or nothing if *package* is not a package */
+    std::optional<ObjectRef<Package>> find_current_package();
+
+    /** Change the value of *package* */
+    void set_current_package(ObjectRef<Package> package);
+
+    /** Find a package by its local name in the current package or by its name */
+    std::optional<ObjectRef<Package>> find_package(const std::string& name);
+
+    /** Create, delete and rename packages */
+    ObjectRef<Package> make_package(const std::string& name);
+    void delete_package(ObjectRef<Package> package);
+    void rename_package(ObjectRef<Package> package, const std::string& name);
+
+    /** Return every package */
+    std::vector<ObjectRef<Package>> list_all_packages();
+
+    /** Intern a symbol in the keyword package */
+    ObjectRef<Symbol> intern_keyword(const std::string& name);
 
     /** Return the output */
     std::stringstream& get_output();

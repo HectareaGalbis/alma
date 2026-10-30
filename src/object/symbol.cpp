@@ -25,6 +25,7 @@
 
 Symbol::Symbol(const std::string& _name)
     : name(_name)
+    , home_package(*this, static_cast<Package*>(nullptr))
 {
 }
 
@@ -39,9 +40,20 @@ ObjectRef<Object> Symbol::eval(ObjectRef<Object> self, ObjectRef<Environment> en
     }
 }
 
-std::string Symbol::to_string(ObjectRef<Object> self [[maybe_unused]])
+std::string Symbol::to_string(ObjectRef<Object> self)
 {
-    return this->name;
+    std::optional<ObjectRef<Package>> home = this->get_home_package();
+    if (!home)
+        return "#:" + this->name;
+    if ((*home)->is_keyword())
+        return ":" + this->name;
+    std::optional<ObjectRef<Package>> current = Alma::alma.find_current_package();
+    if (current) {
+        std::optional<Package::Lookup> found = (*current)->find_accessible_symbol(this->name);
+        if (found && found->symbol.get() == self.get())
+            return this->name;
+    }
+    return (*home)->get_name() + ((*home)->is_external(this->name) ? ":" : "::") + this->name;
 }
 
 ObjectRef<Object> Symbol::type(ObjectRef<Object> self [[maybe_unused]]) const
@@ -101,6 +113,23 @@ void Symbol::pop_property(ObjectRef<Symbol> property)
     mthrow("No property " << property->get_name() << " found for the symbol " << this->name);
 }
 
+std::optional<ObjectRef<Package>> Symbol::get_home_package()
+{
+    if (this->home_package.get() == nullptr)
+        return std::nullopt;
+    return ObjectRef<Package>(this->home_package);
+}
+
+void Symbol::set_home_package(ObjectRef<Package> package)
+{
+    this->home_package = package;
+}
+
+void Symbol::clear_home_package()
+{
+    this->home_package = static_cast<Package*>(nullptr);
+}
+
 bool Symbol::has_value()
 {
     return this->has_property(Alma::alma.intern_alma_symbol("value"));
@@ -124,31 +153,6 @@ void Symbol::push_value(ObjectRef<Object> value)
 void Symbol::pop_value()
 {
     this->pop_property(Alma::alma.intern_alma_symbol("value"));
-}
-
-bool Symbol::has_package()
-{
-    return this->has_property(Alma::alma.intern_alma_symbol("package"));
-}
-
-ObjectRef<Package> Symbol::get_package()
-{
-    return this->get_property(Alma::alma.intern_alma_symbol("package"));
-}
-
-void Symbol::set_package(ObjectRef<Package> package)
-{
-    this->set_property(Alma::alma.intern_alma_symbol("package"), package);
-}
-
-void Symbol::push_package(ObjectRef<Package> package)
-{
-    this->push_property(Alma::alma.intern_alma_symbol("package"), package);
-}
-
-void Symbol::pop_package()
-{
-    this->pop_property(Alma::alma.intern_alma_symbol("package"));
 }
 
 bool Symbol::has_emitter()

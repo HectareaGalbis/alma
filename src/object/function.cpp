@@ -373,6 +373,333 @@ ObjectRef<Object> Rplacd::eval_body(
     return arg_list[0];
 }
 
+// ================================================================================
+// Alma: packages
+// ================================================================================
+
+static void check_arity(const std::vector<ObjectRef<Object>>& arg_list, size_t min, size_t max)
+{
+    aassert(arg_list.size() >= min && arg_list.size() <= max,
+        "Expected between " << min << " and " << max << " arguments but received " << arg_list.size());
+}
+
+static bool packagep(ObjectRef<Object> obj)
+{
+    return Alma::alma.type(obj) == Alma::alma.intern_alma_symbol("package");
+}
+
+static std::string string_designator(ObjectRef<Object> obj)
+{
+    if (Alma::alma.typep(obj, Alma::alma.intern_alma_symbol("string")))
+        return obj.as<String>()->get_content();
+    if (Alma::alma.symbolp(obj))
+        return obj.as<Symbol>()->get_name();
+    athrow("Expected a string or a symbol but found " << Alma::alma.to_string(obj));
+}
+
+static ObjectRef<Package> package_designator(ObjectRef<Object> obj)
+{
+    if (packagep(obj)) {
+        aassert(!obj.as<Package>()->is_deleted(), "The package has been deleted");
+        return obj;
+    }
+    std::string name = string_designator(obj);
+    std::optional<ObjectRef<Package>> package = Alma::alma.find_package(name);
+    aassert(package, "The package " << name << " does not exist");
+    return *package;
+}
+
+static ObjectRef<Package> optional_package(const std::vector<ObjectRef<Object>>& arg_list, size_t index)
+{
+    if (index < arg_list.size())
+        return package_designator(arg_list[index]);
+    return Alma::alma.get_current_package();
+}
+
+static std::vector<ObjectRef<Object>> designator_list(ObjectRef<Object> obj)
+{
+    if (Alma::alma.null(obj))
+        return {};
+    if (Alma::alma.consp(obj))
+        return proper_list_elements(obj);
+    return { obj };
+}
+
+static ObjectRef<Symbol> as_symbol(ObjectRef<Object> obj)
+{
+    aassert(Alma::alma.symbolp(obj), "Expected a symbol but found " << Alma::alma.to_string(obj));
+    return obj;
+}
+
+static ObjectRef<String> as_string(ObjectRef<Object> obj)
+{
+    aassert(Alma::alma.typep(obj, Alma::alma.intern_alma_symbol("string")),
+        "Expected a string but found " << Alma::alma.to_string(obj));
+    return obj;
+}
+
+template <typename T>
+static ObjectRef<Object> to_alma_list(const std::vector<ObjectRef<T>>& elements)
+{
+    std::vector<ObjectRef<Object>> list(elements.begin(), elements.end());
+    return make_list(list, Alma::alma.intern_alma_symbol("nil"));
+}
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> Make_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" }, "t");
+    std::string name = string_designator(arg_list[0]);
+    aassert(arg_list.size() % 2 == 1, "make-package expects a name followed by keyword arguments");
+    std::vector<ObjectRef<Package>> use_list;
+    for (size_t i = 1; i < arg_list.size(); i += 2) {
+        aassert(arg_list[i].get() == Alma::alma.intern_keyword("use").get(),
+            "Unknown keyword argument " << Alma::alma.to_string(arg_list[i]) << " for make-package");
+        for (ObjectRef<Object> used : designator_list(arg_list[i + 1]))
+            use_list.push_back(package_designator(used));
+    }
+    ObjectRef<Package> package = Alma::alma.make_package(name);
+    for (ObjectRef<Package> used : use_list)
+        package->use_package(used);
+    return package;
+}
+
+ObjectRef<Object> Find_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    if (packagep(arg_list[0]))
+        return arg_list[0];
+    std::optional<ObjectRef<Package>> package = Alma::alma.find_package(string_designator(arg_list[0]));
+    if (!package)
+        return Alma::alma.intern_alma_symbol("nil");
+    return *package;
+}
+
+ObjectRef<Object> Delete_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    if (packagep(arg_list[0]) && arg_list[0].as<Package>()->is_deleted())
+        return Alma::alma.boolean(false);
+    Alma::alma.delete_package(package_designator(arg_list[0]));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Rename_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t" });
+    ObjectRef<Package> package = package_designator(arg_list[0]);
+    Alma::alma.rename_package(package, string_designator(arg_list[1]));
+    return package;
+}
+
+ObjectRef<Object> Package_name::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    if (packagep(arg_list[0]) && arg_list[0].as<Package>()->is_deleted())
+        return Alma::alma.intern_alma_symbol("nil");
+    return Alma::alma.make<String>(package_designator(arg_list[0])->get_name());
+}
+
+ObjectRef<Object> List_all_packages::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, {});
+    return to_alma_list(Alma::alma.list_all_packages());
+}
+
+ObjectRef<Object> In_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    ObjectRef<Package> package = package_designator(arg_list[0]);
+    Alma::alma.set_current_package(package);
+    return package;
+}
+
+ObjectRef<Object> Symbol_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "symbol" });
+    std::optional<ObjectRef<Package>> home = arg_list[0].as<Symbol>()->get_home_package();
+    if (!home)
+        return Alma::alma.intern_alma_symbol("nil");
+    return *home;
+}
+
+ObjectRef<Object> Intern::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    std::string name = as_string(arg_list[0])->get_content();
+    return optional_package(arg_list, 1)->intern_symbol(name);
+}
+
+ObjectRef<Object> Find_symbol::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    std::string name = as_string(arg_list[0])->get_content();
+    return Alma::alma.find_symbol(name, optional_package(arg_list, 1));
+}
+
+ObjectRef<Object> Unintern::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Symbol> symbol = as_symbol(arg_list[0]);
+    return Alma::alma.boolean(optional_package(arg_list, 1)->unintern_symbol(symbol));
+}
+
+ObjectRef<Object> Export::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> symbol : designator_list(arg_list[0]))
+        package->export_symbol(as_symbol(symbol));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Unexport::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> symbol : designator_list(arg_list[0]))
+        package->unexport_symbol(as_symbol(symbol));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Import_symbol::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> symbol : designator_list(arg_list[0]))
+        package->import_symbol(as_symbol(symbol));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Shadow::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> name : designator_list(arg_list[0]))
+        package->shadow(string_designator(name));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Shadowing_import::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> symbol : designator_list(arg_list[0]))
+        package->shadowing_import_symbol(as_symbol(symbol));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Use_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> used : designator_list(arg_list[0]))
+        package->use_package(package_designator(used));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Unuse_package::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> used : designator_list(arg_list[0]))
+        package->unuse_package(package_designator(used));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Package_use_list::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return to_alma_list(package_designator(arg_list[0])->get_use_list());
+}
+
+ObjectRef<Object> Package_used_by_list::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return to_alma_list(package_designator(arg_list[0])->get_used_by_list());
+}
+
+ObjectRef<Object> Package_shadowing_symbols::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return to_alma_list(package_designator(arg_list[0])->get_shadowing_symbols());
+}
+
+ObjectRef<Object> Add_package_local_name::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 2, 3);
+    std::string local_name = string_designator(arg_list[0]);
+    ObjectRef<Package> actual = package_designator(arg_list[1]);
+    ObjectRef<Package> package = optional_package(arg_list, 2);
+    package->add_local_name(local_name, actual);
+    return package;
+}
+
+ObjectRef<Object> Remove_package_local_name::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    std::string local_name = string_designator(arg_list[0]);
+    return Alma::alma.boolean(optional_package(arg_list, 1)->remove_local_name(local_name));
+}
+
+ObjectRef<Object> Package_local_names::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    std::vector<ObjectRef<Object>> list;
+    for (auto& [local_name, package] : package_designator(arg_list[0])->get_local_names())
+        list.push_back(Alma::alma.make<Cons>(Alma::alma.make<String>(local_name), package));
+    return make_list(list, Alma::alma.intern_alma_symbol("nil"));
+}
+
 // --------------------------------------------------------------------------------
 
 ObjectRef<Object> Load::eval_body(
@@ -686,7 +1013,7 @@ using Arguments = std::vector<ObjectRef<Object>>;
 
 static ObjectRef<Object> symbol(const std::string& name)
 {
-    return Alma::alma.intern_alma_symbol(name);
+    return Alma::alma.intern_symbol(name);
 }
 
 static ObjectRef<Object> boolean(bool value)

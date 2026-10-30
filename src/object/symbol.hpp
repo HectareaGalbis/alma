@@ -3,6 +3,7 @@
 
 #include "interfaces/emittable.hpp"
 #include "object.hpp"
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -14,6 +15,7 @@ class Emitter;
 class Symbol : public Object, public Emittable {
 private:
     std::string name;
+    ObjectTrackedRef<Package> home_package;
     std::unordered_map<ObjectTrackedKeyRef<Symbol>, std::vector<ObjectTrackedKeyRef<Object>>,
         ObjectRefHash, ObjectRefEqual>
         properties;
@@ -42,17 +44,15 @@ public:
     void push_property(ObjectRef<Symbol> property, ObjectRef<Object> value);
     void pop_property(ObjectRef<Symbol> property);
 
+    std::optional<ObjectRef<Package>> get_home_package();
+    void set_home_package(ObjectRef<Package> package);
+    void clear_home_package();
+
     bool has_value();
     ObjectRef<Object> get_value();
     void set_value(ObjectRef<Object> value);
     void push_value(ObjectRef<Object> value);
     void pop_value();
-
-    bool has_package();
-    ObjectRef<Package> get_package();
-    void set_package(ObjectRef<Package> package);
-    void push_package(ObjectRef<Package> package);
-    void pop_package();
 
     bool has_emitter();
     ObjectRef<Emitter> get_emitter();

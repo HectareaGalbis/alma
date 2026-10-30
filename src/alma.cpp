@@ -41,7 +41,7 @@ void Alma::intern_functions()
     intern_function(Eval, "eval");
     intern_function(List, "list");
     intern_function(Load, "load");
-    intern_function(Import, "import");
+    intern_function(Import, "import-project");
     intern_function(Exit, "exit");
 
     // Alma: lists
@@ -64,6 +64,32 @@ void Alma::intern_functions()
     intern_function(Member, "member");
     intern_function(Rplaca, "rplaca");
     intern_function(Rplacd, "rplacd");
+
+    // Alma: packages
+    intern_function(Make_package, "make-package");
+    intern_function(Find_package, "find-package");
+    intern_function(Delete_package, "delete-package");
+    intern_function(Rename_package, "rename-package");
+    intern_function(Package_name, "package-name");
+    intern_function(List_all_packages, "list-all-packages");
+    intern_function(In_package, "in-package");
+    intern_function(Symbol_package, "symbol-package");
+    intern_function(Intern, "intern");
+    intern_function(Find_symbol, "find-symbol");
+    intern_function(Unintern, "unintern");
+    intern_function(Export, "export");
+    intern_function(Unexport, "unexport");
+    intern_function(Import_symbol, "import");
+    intern_function(Shadow, "shadow");
+    intern_function(Shadowing_import, "shadowing-import");
+    intern_function(Use_package, "use-package");
+    intern_function(Unuse_package, "unuse-package");
+    intern_function(Package_use_list, "package-use-list");
+    intern_function(Package_used_by_list, "package-used-by-list");
+    intern_function(Package_shadowing_symbols, "package-shadowing-symbols");
+    intern_function(Add_package_local_name, "add-package-local-name");
+    intern_function(Remove_package_local_name, "remove-package-local-name");
+    intern_function(Package_local_names, "package-local-names");
 
     // Alma: vectors
     intern_function(Vector_create, "vector");
@@ -137,6 +163,8 @@ void Alma::intern_symbols()
 {
     intern_selfevaluating_symbol(*this, "t");
     intern_selfevaluating_symbol(*this, "nil");
+    for (const char* name : { "&rest", "quote", "quasiquote", "unquote", "slice-unquote", "const", "*" })
+        this->intern_alma_symbol(name);
     ObjectRef<Symbol> current_file = this->intern_alma_symbol("*current-file*");
     current_file->push_value(this->intern_alma_symbol("nil"));
     ObjectRef<Symbol> source_distribution = this->intern_alma_symbol("*source-distribution*");
@@ -146,11 +174,17 @@ void Alma::intern_symbols()
 Alma::Alma()
     : gc()
     , environment(gc.make_object<Environment>())
-    , alma_package(gc.make_object<Package>())
-    , current_package(alma_package)
+    , alma_package(gc.make_object<Package>("alma"))
+    , keyword_package(gc.make_object<Package>("keyword", true))
     , nil(gc.make_object<Nil>())
     , type_system(gc.make_object<TypeSystem>())
 {
+    this->packages.emplace("alma", this->alma_package);
+    this->packages.emplace("keyword", this->keyword_package);
+    ObjectRef<Package> user_package = this->make_package("alma-user");
+    user_package->use_package(this->alma_package);
+    ObjectRef<Symbol> package_symbol = this->intern_alma_symbol("*package*");
+    package_symbol->push_value(user_package);
     this->intern_symbols();
     this->intern_functions();
     intern_special_operators();
@@ -201,14 +235,18 @@ void Alma::load(const std::filesystem::path& path)
     Reader reader(*this, path.native(), input);
     ObjectRef<Symbol> current_file = this->intern_alma_symbol("*current-file*");
     current_file->push_value(this->make<String>(std::filesystem::absolute(path).lexically_normal().native()));
+    ObjectRef<Symbol> package_symbol = this->intern_alma_symbol("*package*");
+    package_symbol->push_value(this->get_current_package());
     try {
         for (std::optional<ObjectRef<Object>> obj = reader.read(); obj; obj = reader.read())
             this->eval(*obj);
     } catch (...) {
         current_file->pop_value();
+        package_symbol->pop_value();
         throw;
     }
     current_file->pop_value();
+    package_symbol->pop_value();
 }
 
 ObjectRef<Object> Alma::transform(
@@ -303,7 +341,88 @@ std::unique_ptr<Type> Alma::emit_expression(ObjectRef<Object> obj, ObjectRef<Env
 
 ObjectRef<Package> Alma::get_current_package()
 {
-    return this->current_package;
+    std::optional<ObjectRef<Package>> package = this->find_current_package();
+    aassert(package, "The value of *package* is not a package");
+    return *package;
+}
+
+std::optional<ObjectRef<Package>> Alma::find_current_package()
+{
+    ObjectRef<Symbol> package_symbol = this->intern_alma_symbol("*package*");
+    if (!package_symbol->has_value())
+        return std::nullopt;
+    ObjectRef<Object> value = package_symbol->get_value();
+    if (this->type(value) != this->intern_alma_symbol("package") || value.as<Package>()->is_deleted())
+        return std::nullopt;
+    return ObjectRef<Package>(value);
+}
+
+void Alma::set_current_package(ObjectRef<Package> package)
+{
+    aassert(!package->is_deleted(), "Cannot use a deleted package");
+    this->set_symbol_value(this->intern_alma_symbol("*package*"), package);
+}
+
+std::optional<ObjectRef<Package>> Alma::find_package(const std::string& name)
+{
+    std::optional<ObjectRef<Package>> current = this->find_current_package();
+    if (current) {
+        std::optional<ObjectRef<Package>> local = (*current)->find_local_name(name);
+        if (local)
+            return local;
+    }
+    auto it = this->packages.find(name);
+    if (it == this->packages.end())
+        return std::nullopt;
+    return it->second;
+}
+
+ObjectRef<Package> Alma::make_package(const std::string& name)
+{
+    aassert(!name.empty(), "The name of a package cannot be empty");
+    aassert(!this->packages.contains(name), "The package " << name << " already exists");
+    ObjectRef<Package> package = this->make<Package>(name);
+    this->packages.emplace(name, package);
+    return package;
+}
+
+void Alma::delete_package(ObjectRef<Package> package)
+{
+    aassert(package != this->alma_package && package != this->keyword_package,
+        "Cannot delete the package " << package->get_name());
+    std::optional<ObjectRef<Package>> current = this->find_current_package();
+    aassert(!current || *current != package, "Cannot delete the current package " << package->get_name());
+    for (auto& [name, other] : this->packages)
+        for (auto& [local_name, local_package] : other->get_local_names())
+            if (local_package == package)
+                other->remove_local_name(local_name);
+    this->packages.erase(package->get_name());
+    package->destroy();
+}
+
+void Alma::rename_package(ObjectRef<Package> package, const std::string& name)
+{
+    aassert(!package->is_deleted(), "Cannot rename a deleted package");
+    aassert(!name.empty(), "The name of a package cannot be empty");
+    if (name == package->get_name())
+        return;
+    aassert(!this->packages.contains(name), "The package " << name << " already exists");
+    this->packages.erase(package->get_name());
+    package->set_name(name);
+    this->packages.emplace(name, package);
+}
+
+std::vector<ObjectRef<Package>> Alma::list_all_packages()
+{
+    std::vector<ObjectRef<Package>> result;
+    for (auto& [name, package] : this->packages)
+        result.push_back(package);
+    return result;
+}
+
+ObjectRef<Symbol> Alma::intern_keyword(const std::string& name)
+{
+    return this->keyword_package->intern_symbol(name);
 }
 
 std::string Alma::get_c_code()
@@ -414,7 +533,7 @@ ObjectRef<Object> Alma::find_symbol(const std::string& name, ObjectRef<Package> 
 
 ObjectRef<Object> Alma::find_symbol(const std::string& name)
 {
-    return this->find_symbol(name, this->current_package);
+    return this->find_symbol(name, this->get_current_package());
 }
 
 ObjectRef<Object> Alma::find_alma_symbol(const std::string& name)
@@ -429,12 +548,12 @@ ObjectRef<Object> Alma::intern_symbol(const std::string& name, ObjectRef<Package
 
 ObjectRef<Object> Alma::intern_symbol(const std::string& name)
 {
-    return this->current_package->intern_symbol(name);
+    return this->get_current_package()->intern_symbol(name);
 }
 
 ObjectRef<Object> Alma::intern_alma_symbol(const std::string& name)
 {
-    return this->alma_package->intern_symbol(name);
+    return this->alma_package->intern_external_symbol(name);
 }
 
 ObjectRef<Object> Alma::find_character_macro(char c, ObjectRef<Package> package)
@@ -448,7 +567,7 @@ ObjectRef<Object> Alma::find_character_macro(char c, ObjectRef<Package> package)
 
 ObjectRef<Object> Alma::find_character_macro(char c)
 {
-    return this->find_character_macro(c, this->current_package);
+    return this->find_character_macro(c, this->get_current_package());
 }
 
 ObjectRef<Object> Alma::find_alma_character_macro(char c)
@@ -463,7 +582,7 @@ ObjectRef<Object> Alma::intern_character_macro(char c, ObjectRef<Procedure> proc
 
 ObjectRef<Object> Alma::intern_character_macro(char c, ObjectRef<Procedure> proc)
 {
-    return this->intern_character_macro(c, proc, this->current_package);
+    return this->intern_character_macro(c, proc, this->get_current_package());
 }
 
 ObjectRef<Object> Alma::intern_alma_character_macro(char c, ObjectRef<Procedure> proc)

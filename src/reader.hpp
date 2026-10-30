@@ -25,7 +25,7 @@ private:
         size_t quasiquote_level;
 
     private:
-        ObjectRef<Symbol> findSymbol(const std::vector<std::string>& splittedTokens);
+        ObjectRef<Symbol> find_symbol(const std::string& token);
 
     public:
         template <typename... AS>

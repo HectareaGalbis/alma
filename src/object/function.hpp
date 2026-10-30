@@ -56,6 +56,38 @@ declare_function(Member);
 declare_function(Rplaca);
 declare_function(Rplacd);
 
+// -----------------------------------------------------------------------------
+// Alma: packages
+//
+// A package designator is a package, a string or a symbol, and it is searched first among the local
+// names of the current package. The functions that receive symbols or packages also accept a list
+// of them. The optional package argument is the current package by default.
+
+declare_function(Make_package);
+declare_function(Find_package);
+declare_function(Delete_package);
+declare_function(Rename_package);
+declare_function(Package_name);
+declare_function(List_all_packages);
+declare_function(In_package);
+declare_function(Symbol_package);
+declare_function(Intern);
+declare_function(Find_symbol);
+declare_function(Unintern);
+declare_function(Export);
+declare_function(Unexport);
+declare_function(Import_symbol);
+declare_function(Shadow);
+declare_function(Shadowing_import);
+declare_function(Use_package);
+declare_function(Unuse_package);
+declare_function(Package_use_list);
+declare_function(Package_used_by_list);
+declare_function(Package_shadowing_symbols);
+declare_function(Add_package_local_name);
+declare_function(Remove_package_local_name);
+declare_function(Package_local_names);
+
 declare_function(Load);
 declare_function(Import);
 declare_function(Exit);
