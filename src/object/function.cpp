@@ -1,6 +1,8 @@
 
 #include "function.hpp"
 #include "alma.hpp"
+#include "hash_table.hpp"
+#include "character.hpp"
 #include "cons.hpp"
 #include "debug.hpp"
 #include "integer.hpp"
@@ -698,6 +700,279 @@ ObjectRef<Object> Package_local_names::eval_body(
     for (auto& [local_name, package] : package_designator(arg_list[0])->get_local_names())
         list.push_back(Alma::alma.make<Cons>(Alma::alma.make<String>(local_name), package));
     return make_list(list, Alma::alma.intern_alma_symbol("nil"));
+}
+
+// ================================================================================
+// Alma: equality and hash tables
+// ================================================================================
+
+ObjectRef<Object> Eql::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t" });
+    return Alma::alma.boolean(alma_eql(arg_list[0], arg_list[1]));
+}
+
+ObjectRef<Object> Equal::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t" });
+    return Alma::alma.boolean(alma_equal(arg_list[0], arg_list[1]));
+}
+
+ObjectRef<Object> Equalp::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t" });
+    return Alma::alma.boolean(alma_equalp(arg_list[0], arg_list[1]));
+}
+
+static const std::vector<std::pair<const char*, HashTable::Test>> standard_tests = {
+    { "eq", HashTable::Test::Eq },
+    { "eql", HashTable::Test::Eql },
+    { "equal", HashTable::Test::Equal },
+    { "equalp", HashTable::Test::Equalp },
+};
+
+static std::optional<HashTable::Test> standard_test(ObjectRef<Object> obj)
+{
+    for (auto& [name, test] : standard_tests) {
+        ObjectRef<Symbol> symbol = Alma::alma.intern_alma_symbol(name);
+        if (obj.get() == symbol.get() || (symbol->has_value() && obj == symbol->get_value()))
+            return test;
+    }
+    return std::nullopt;
+}
+
+static ObjectRef<Object> as_function(ObjectRef<Object> obj)
+{
+    if (Alma::alma.symbolp(obj) && obj.as<Symbol>()->has_value())
+        obj = obj.as<Symbol>()->get_value();
+    aassert(Alma::alma.typep(obj, Alma::alma.intern_alma_symbol("function")),
+        "Expected a function but found " << Alma::alma.to_string(obj));
+    return obj;
+}
+
+ObjectRef<Object> Make_hash_table::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    aassert(arg_list.size() % 2 == 0, "make-hash-table expects keyword arguments");
+    std::optional<ObjectRef<Object>> test_arg;
+    std::optional<ObjectRef<Object>> hash_arg;
+    std::optional<size_t> size_arg;
+    for (size_t i = 0; i < arg_list.size(); i += 2) {
+        ObjectRef<Object> key = arg_list[i];
+        ObjectRef<Object> value = arg_list[i + 1];
+        if (key.get() == Alma::alma.intern_keyword("test").get()) {
+            aassert(!test_arg, "The keyword argument :test is repeated");
+            test_arg = value;
+        } else if (key.get() == Alma::alma.intern_keyword("hash-function").get()) {
+            aassert(!hash_arg, "The keyword argument :hash-function is repeated");
+            hash_arg = as_function(value);
+        } else if (key.get() == Alma::alma.intern_keyword("size").get()) {
+            aassert(!size_arg, "The keyword argument :size is repeated");
+            aassert(Alma::alma.typep(value, Alma::alma.intern_alma_symbol("integer"))
+                    && value.as<Integer>()->get_value() >= 0,
+                "The size of a hash table must be a non negative integer but found " << Alma::alma.to_string(value));
+            size_arg = static_cast<size_t>(value.as<Integer>()->get_value());
+        } else {
+            athrow("Unknown keyword argument " << Alma::alma.to_string(key) << " for make-hash-table");
+        }
+    }
+
+    HashTable::Test test = HashTable::Test::Eql;
+    std::optional<ObjectRef<Object>> test_function;
+    std::optional<HashTable::Test> standard = test_arg ? standard_test(*test_arg) : std::nullopt;
+    if (test_arg && standard && !hash_arg) {
+        test = *standard;
+    } else if (test_arg || hash_arg) {
+        aassert(hash_arg, "A hash table with a test other than eq, eql, equal or equalp needs a :hash-function");
+        test = HashTable::Test::Custom;
+        test_function = as_function(test_arg ? *test_arg : Alma::alma.intern_alma_symbol("eql"));
+    }
+    return Alma::alma.make<HashTable>(test, test_function, hash_arg, size_arg.value_or(0));
+}
+
+ObjectRef<Object> Hash_table_p::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.boolean(Alma::alma.typep(arg_list[0], Alma::alma.intern_alma_symbol("hash-table")));
+}
+
+ObjectRef<Object> Gethash::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "hash-table" }, "t");
+    aassert(arg_list.size() <= 3, "Expected at most 3 arguments but received " << arg_list.size());
+    std::optional<ObjectRef<Object>> value = arg_list[1].as<HashTable>()->get(arg_list[0]);
+    if (value)
+        return *value;
+    return arg_list.size() == 3 ? arg_list[2] : Alma::alma.intern_alma_symbol("nil");
+}
+
+ObjectRef<Object> Puthash::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t", "hash-table" });
+    arg_list[2].as<HashTable>()->put(arg_list[0], arg_list[1]);
+    return arg_list[1];
+}
+
+ObjectRef<Object> Remhash::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "hash-table" });
+    return Alma::alma.boolean(arg_list[1].as<HashTable>()->remove(arg_list[0]));
+}
+
+ObjectRef<Object> Clrhash::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "hash-table" });
+    arg_list[0].as<HashTable>()->clear();
+    return arg_list[0];
+}
+
+ObjectRef<Object> Maphash::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "hash-table" });
+    ObjectRef<Object> function = as_function(arg_list[0]);
+    for (auto& [key, value] : arg_list[1].as<HashTable>()->to_vector())
+        Alma::alma.funcall(function, { key, value });
+    return Alma::alma.intern_alma_symbol("nil");
+}
+
+ObjectRef<Object> Hash_table_count::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "hash-table" });
+    return Alma::alma.make<Integer>(static_cast<int64_t>(arg_list[0].as<HashTable>()->count()));
+}
+
+ObjectRef<Object> Hash_table_test::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "hash-table" });
+    ObjectRef<HashTable> table = arg_list[0];
+    for (auto& [name, test] : standard_tests)
+        if (table->get_test() == test)
+            return Alma::alma.intern_alma_symbol(name);
+    return *table->get_test_function();
+}
+
+ObjectRef<Object> Hash_table_contains_p::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "hash-table" });
+    return Alma::alma.boolean(arg_list[1].as<HashTable>()->get(arg_list[0]).has_value());
+}
+
+// ================================================================================
+// Alma: character macros
+// ================================================================================
+
+ObjectRef<Object> Read_vector::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.make<Vector>(proper_list_elements(arg_list[0]));
+}
+
+ObjectRef<Object> Read_hash_table::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    std::vector<ObjectRef<Object>> elements = proper_list_elements(arg_list[0]);
+    aassert(elements.size() % 2 == 0, "A hash table needs a value for each key");
+    ObjectRef<HashTable> table = Alma::alma.make<HashTable>(HashTable::Test::Equal, std::nullopt, std::nullopt, elements.size() / 2);
+    for (size_t i = 0; i < elements.size(); i += 2)
+        table->put(elements[i], elements[i + 1]);
+    return table;
+}
+
+static char as_char(ObjectRef<Object> obj)
+{
+    aassert(Alma::alma.typep(obj, Alma::alma.intern_alma_symbol("character")),
+        "Expected a character but found " << Alma::alma.to_string(obj));
+    return obj.as<Character>()->get_char();
+}
+
+ObjectRef<Object> Set_character_macro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 2, 3);
+    char c = as_char(arg_list[0]);
+    aassert(Alma::alma.typep(arg_list[1], Alma::alma.intern_alma_symbol("procedure")),
+        "Expected a procedure but found " << Alma::alma.to_string(arg_list[1]));
+    optional_package(arg_list, 2)->set_character_macro(c, arg_list[1]);
+    return arg_list[1];
+}
+
+ObjectRef<Object> Find_character_macro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    std::optional<ObjectRef<Procedure>> proc = optional_package(arg_list, 1)->find_character_macro(as_char(arg_list[0]));
+    if (!proc)
+        return Alma::alma.intern_alma_symbol("nil");
+    return *proc;
+}
+
+ObjectRef<Object> Export_character_macro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> c : designator_list(arg_list[0]))
+        package->export_character_macro(as_char(c));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Unexport_character_macro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 2);
+    ObjectRef<Package> package = optional_package(arg_list, 1);
+    for (ObjectRef<Object> c : designator_list(arg_list[0]))
+        package->unexport_character_macro(as_char(c));
+    return Alma::alma.boolean(true);
+}
+
+ObjectRef<Object> Import_character_macro::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 2, 3);
+    ObjectRef<Package> from = package_designator(arg_list[1]);
+    ObjectRef<Package> package = optional_package(arg_list, 2);
+    for (ObjectRef<Object> obj : designator_list(arg_list[0])) {
+        char c = as_char(obj);
+        std::optional<ObjectRef<Procedure>> proc = from->find_character_macro(c);
+        aassert(proc, "The character macro #" << c << " is not defined in the package " << from->get_name());
+        package->import_character_macro(c, *proc);
+    }
+    return Alma::alma.boolean(true);
 }
 
 // --------------------------------------------------------------------------------

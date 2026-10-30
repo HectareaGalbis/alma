@@ -11,7 +11,9 @@
 #include <filesystem>
 #include <map>
 #include <optional>
+#include <cstdint>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 class Environment;
@@ -19,6 +21,13 @@ class Package;
 class Procedure;
 class Symbol;
 class Object;
+
+/** Thrown before the stack is exhausted. It is not wrapped with the context of each evaluation,
+    because that context grows with each level of the recursion */
+class StackOverflow : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
 
 class Alma {
     friend class Object;
@@ -34,6 +43,8 @@ private:
     ObjectRef<TypeSystem> type_system;
     std::stringstream output;
     Declarations declarations;
+    std::uintptr_t stack_base;
+    std::size_t stack_limit;
 
 private:
     void intern_functions();
@@ -46,6 +57,9 @@ public:
     static Alma alma;
 
 public:
+    /** Throw StackOverflow if the stack is almost exhausted */
+    void check_stack();
+
     /** Allocates an object */
     template <typename T, typename... AS>
     ObjectRef<T> make(AS&&... as);
@@ -80,6 +94,9 @@ public:
         ObjectRef<Object> obj,
         ObjectRef<Cons> args,
         ObjectRef<Environment> environment);
+
+    /** Call a function with arguments that are already evaluated */
+    ObjectRef<Object> funcall(ObjectRef<Object> function, const std::vector<ObjectRef<Object>>& arg_list);
 
     /** Emit an object as top level C code, appending it to the output */
     void emit(ObjectRef<Object> obj);

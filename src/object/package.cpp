@@ -4,6 +4,11 @@
 #include "symbol.hpp"
 #include <algorithm>
 
+static std::string character_name(char c)
+{
+    return std::string("#") + c;
+}
+
 Package::Package(const std::string& _name, bool _keyword)
     : name(_name)
     , deleted(false)
@@ -248,6 +253,10 @@ void Package::use_package(ObjectRef<Package> package)
     for (const std::string& _name : package->external_names)
         aassert(!this->conflicts(_name, *package->find_present_symbol(_name)),
             "Using " << package->get_name() << " from " << this->name << " causes a name conflict with " << _name);
+    for (char c : package->external_character_macros)
+        aassert(!this->character_macro_conflicts(c, *package->find_present_character_macro(c)),
+            "Using " << package->get_name() << " from " << this->name << " causes a conflict with the character macro "
+                     << character_name(c));
     this->use_list.emplace_back(*this, package);
     package->used_by_list.emplace_back(*package, ObjectRef<Package>(this));
 }
@@ -327,10 +336,39 @@ void Package::destroy()
 // -----------------------------------------------------------------------------
 // Character macros
 
+bool Package::character_macro_conflicts(char c, ObjectRef<Procedure> proc)
+{
+    if (this->find_present_character_macro(c))
+        return false;
+    std::optional<ObjectRef<Procedure>> inherited = this->find_character_macro(c);
+    return inherited && *inherited != proc;
+}
+
+std::optional<ObjectRef<Procedure>> Package::find_present_character_macro(char c)
+{
+    auto it = this->character_macros.find(c);
+    if (it == this->character_macros.end())
+        return std::nullopt;
+    return ObjectRef<Procedure>(it->second);
+}
+
+std::optional<ObjectRef<Procedure>> Package::find_external_character_macro(char c)
+{
+    if (!this->external_character_macros.contains(c))
+        return std::nullopt;
+    return this->find_present_character_macro(c);
+}
+
 std::optional<ObjectRef<Procedure>> Package::find_character_macro(char c)
 {
-    if (this->character_macros.contains(c))
-        return this->character_macros.at(c);
+    std::optional<ObjectRef<Procedure>> present = this->find_present_character_macro(c);
+    if (present)
+        return present;
+    for (ObjectRef<Package> used : this->get_use_list()) {
+        std::optional<ObjectRef<Procedure>> inherited = used->find_external_character_macro(c);
+        if (inherited)
+            return inherited;
+    }
     return std::nullopt;
 }
 
@@ -339,4 +377,52 @@ ObjectRef<Procedure> Package::intern_character_macro(char c, ObjectRef<Procedure
     if (!this->character_macros.contains(c))
         this->character_macros.try_emplace(c, *this, proc);
     return proc;
+}
+
+void Package::set_character_macro(char c, ObjectRef<Procedure> proc)
+{
+    if (this->external_character_macros.contains(c))
+        for (ObjectRef<Package> user : this->get_used_by_list())
+            aassert(!user->character_macro_conflicts(c, proc),
+                "Defining the exported character macro " << character_name(c) << " in " << this->name
+                                                         << " causes a conflict in " << user->get_name());
+    auto it = this->character_macros.find(c);
+    if (it != this->character_macros.end())
+        it->second = proc;
+    else
+        this->character_macros.try_emplace(c, *this, proc);
+}
+
+void Package::export_character_macro(char c)
+{
+    std::optional<ObjectRef<Procedure>> proc = this->find_character_macro(c);
+    aassert(proc, "The character macro " << character_name(c) << " is not defined in the package " << this->name);
+    if (this->external_character_macros.contains(c))
+        return;
+    for (ObjectRef<Package> user : this->get_used_by_list())
+        aassert(!user->character_macro_conflicts(c, *proc),
+            "Exporting the character macro " << character_name(c) << " from " << this->name
+                                             << " causes a conflict in " << user->get_name());
+    if (!this->find_present_character_macro(c))
+        this->character_macros.try_emplace(c, *this, *proc);
+    this->external_character_macros.insert(c);
+}
+
+void Package::unexport_character_macro(char c)
+{
+    aassert(this->find_present_character_macro(c),
+        "The character macro " << character_name(c) << " is not defined in the package " << this->name);
+    this->external_character_macros.erase(c);
+}
+
+void Package::import_character_macro(char c, ObjectRef<Procedure> proc)
+{
+    std::optional<ObjectRef<Procedure>> present = this->find_present_character_macro(c);
+    if (present) {
+        aassert(*present == proc,
+            "Importing the character macro " << character_name(c) << " into " << this->name
+                                             << " causes a conflict with its own definition");
+        return;
+    }
+    this->set_character_macro(c, proc);
 }

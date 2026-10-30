@@ -16,7 +16,7 @@ TypeSystem::TypeSystem()
     ObjectRef<Symbol> object = intern_type("object");
     this->insert_type(object, t);
     for (const std::string name : { "character", "character-macro", "cons", "emitter", "environment",
-             "integer", "package", "preprocessor-macro", "string", "symbol", "type-system", "vector" })
+             "hash-table", "integer", "package", "preprocessor-macro", "string", "symbol", "type-system", "vector" })
         this->insert_type(intern_type(name), object);
 
     ObjectRef<Symbol> procedure = intern_type("procedure");

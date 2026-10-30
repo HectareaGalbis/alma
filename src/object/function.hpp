@@ -88,6 +88,48 @@ declare_function(Add_package_local_name);
 declare_function(Remove_package_local_name);
 declare_function(Package_local_names);
 
+// -----------------------------------------------------------------------------
+// Alma: equality and hash tables
+//
+//   (make-hash-table :test 'equal :size 100)
+//   (make-hash-table :test my-test :hash-function my-hash)
+//   (puthash key value table) (gethash key table [default]) (remhash key table)
+//
+// The test is eql by default. A test other than eq, eql, equal or equalp needs a hash function,
+// that receives a key and returns an integer, the same for keys that the test considers equal.
+
+declare_function(Eql);
+declare_function(Equal);
+declare_function(Equalp);
+declare_function(Make_hash_table);
+declare_function(Hash_table_p);
+declare_function(Gethash);
+declare_function(Puthash);
+declare_function(Remhash);
+declare_function(Clrhash);
+declare_function(Maphash);
+declare_function(Hash_table_count);
+declare_function(Hash_table_test);
+declare_function(Hash_table_contains_p);
+
+// -----------------------------------------------------------------------------
+// Alma: character macros
+//
+// #c followed by an object calls the procedure associated to c in the current package with that
+// object, without evaluating it, and its result is evaluated. After #( #[ #{ the objects are read
+// until the pair ) ] } and the procedure receives them as a list. The package alma exports:
+//
+//   #(1 2 3)                     a vector
+//   #{"a" 1 "b" 2}               a hash table with the test equal
+
+declare_function(Read_vector);
+declare_function(Read_hash_table);
+declare_function(Set_character_macro);
+declare_function(Find_character_macro);
+declare_function(Export_character_macro);
+declare_function(Unexport_character_macro);
+declare_function(Import_character_macro);
+
 declare_function(Load);
 declare_function(Import);
 declare_function(Exit);

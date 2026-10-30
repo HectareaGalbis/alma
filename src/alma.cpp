@@ -1,6 +1,8 @@
 
 
 #include "alma.hpp"
+#include <algorithm>
+#include <sys/resource.h>
 #include "debug.hpp"
 #include "interfaces/applicable.hpp"
 #include "interfaces/emittable.hpp"
@@ -91,6 +93,30 @@ void Alma::intern_functions()
     intern_function(Remove_package_local_name, "remove-package-local-name");
     intern_function(Package_local_names, "package-local-names");
 
+    // Alma: equality and hash tables
+    intern_function(Eql, "eql");
+    intern_function(Equal, "equal");
+    intern_function(Equalp, "equalp");
+    intern_function(Make_hash_table, "make-hash-table");
+    intern_function(Hash_table_p, "hash-table-p");
+    intern_function(Gethash, "gethash");
+    intern_function(Puthash, "puthash");
+    intern_function(Remhash, "remhash");
+    intern_function(Clrhash, "clrhash");
+    intern_function(Maphash, "maphash");
+    intern_function(Hash_table_count, "hash-table-count");
+    intern_function(Hash_table_test, "hash-table-test");
+    intern_function(Hash_table_contains_p, "hash-table-contains-p");
+
+    // Alma: character macros
+    intern_function(Set_character_macro, "set-character-macro");
+    intern_function(Find_character_macro, "find-character-macro");
+    intern_function(Export_character_macro, "export-character-macro");
+    intern_function(Unexport_character_macro, "unexport-character-macro");
+    intern_function(Import_character_macro, "import-character-macro");
+    this->intern_alma_character_macro('(', this->make<Read_vector>());
+    this->intern_alma_character_macro('{', this->make<Read_hash_table>());
+
     // Alma: vectors
     intern_function(Vector_create, "vector");
     intern_function(Make_vector, "make-vector");
@@ -179,6 +205,16 @@ Alma::Alma()
     , nil(gc.make_object<Nil>())
     , type_system(gc.make_object<TypeSystem>())
 {
+    // The stack grows down from here. Leave a margin to report the error
+    char marker;
+    this->stack_base = reinterpret_cast<std::uintptr_t>(&marker);
+    std::size_t stack_size = 8 * 1024 * 1024;
+    struct rlimit limit;
+    if (getrlimit(RLIMIT_STACK, &limit) == 0 && limit.rlim_cur != RLIM_INFINITY)
+        stack_size = limit.rlim_cur;
+    std::size_t margin = std::min<std::size_t>(stack_size / 4, 256 * 1024);
+    this->stack_limit = stack_size - margin;
+
     this->packages.emplace("alma", this->alma_package);
     this->packages.emplace("keyword", this->keyword_package);
     ObjectRef<Package> user_package = this->make_package("alma-user");
@@ -195,13 +231,24 @@ Alma::Alma()
     declare_standard(this->declarations);
 }
 
+void Alma::check_stack()
+{
+    char marker;
+    std::uintptr_t used = this->stack_base - reinterpret_cast<std::uintptr_t>(&marker);
+    if (used > this->stack_limit)
+        throw StackOverflow("The stack is exhausted, maybe because of an infinite recursion\n");
+}
+
 ObjectRef<Object> Alma::expand(ObjectRef<Object> obj, ObjectRef<Environment> _environment)
 {
+    this->check_stack();
     try {
         Expandable* expandable = dynamic_cast<Expandable*>(obj.get());
         if (!expandable)
             return obj;
         return expandable->expand(obj, _environment);
+    } catch (const StackOverflow&) {
+        throw;
     } catch (const std::runtime_error& e) {
         athrow("Error expanding " << this->to_string(obj) << "\n"
                                   << e.what());
@@ -215,8 +262,11 @@ ObjectRef<Object> Alma::expand(ObjectRef<Object> obj)
 
 ObjectRef<Object> Alma::eval(ObjectRef<Object> obj, ObjectRef<Environment> lex_environment)
 {
+    this->check_stack();
     try {
         return obj->eval(obj, lex_environment);
+    } catch (const StackOverflow&) {
+        throw;
     } catch (const std::runtime_error& e) {
         athrow("Error evaluating " << this->to_string(obj) << "\n"
                                    << e.what());
@@ -268,6 +318,7 @@ ObjectRef<Object> Alma::transform(
     // A call without arguments receives nil instead of a list
     if (this->null(args))
         return this->transform(obj, std::vector<ObjectRef<Object>> {}, _environment);
+    aassert(this->consp(args), "Cannot transform a non proper list of arguments " << args);
     auto [arg_list, arg_rest] = args->to_list();
     aassert(!arg_rest, "Cannot transform a non proper list of arguments " << args);
     return this->transform(obj, arg_list, _environment);
@@ -292,9 +343,20 @@ ObjectRef<Object> Alma::apply(
     // A call without arguments receives nil instead of a list
     if (this->null(args))
         return this->apply(obj, std::vector<ObjectRef<Object>> {}, _environment);
+    aassert(this->consp(args), "Cannot apply a non proper list of arguments " << args);
     auto [arg_list, arg_rest] = args->to_list();
     aassert(!arg_rest, "Cannot apply a non proper list of arguments " << args);
     return this->apply(obj, arg_list, _environment);
+}
+
+ObjectRef<Object> Alma::funcall(ObjectRef<Object> function, const std::vector<ObjectRef<Object>>& arg_list)
+{
+    aassert(this->typep(function, this->intern_alma_symbol("function")),
+        "The object " << this->to_string(function) << " is not a function");
+    std::vector<ObjectRef<Object>> quoted_args;
+    for (const ObjectRef<Object>& arg : arg_list)
+        quoted_args.push_back(this->make<Cons>(std::vector<ObjectRef<Object>> { this->intern_alma_symbol("quote"), arg }));
+    return this->apply(function, quoted_args, this->environment);
 }
 
 static Emittable& as_emittable(Alma& alma, ObjectRef<Object> obj)
@@ -313,6 +375,8 @@ void Alma::emit(ObjectRef<Object> obj)
     try {
         ObjectRef<Object> expanded = expand_macros(obj);
         this->emit_top_level(expanded, this->environment, _declarations, _output);
+    } catch (const StackOverflow&) {
+        throw;
     } catch (const std::runtime_error& e) {
         athrow("Error emitting " << this->to_string(obj) << "\n"
                                  << e.what());
@@ -330,12 +394,14 @@ void Alma::emit_top_level(ObjectRef<Object> obj, ObjectRef<Environment> _environ
 void Alma::emit_statement(ObjectRef<Object> obj, ObjectRef<Environment> _environment,
     Declarations& _declarations, std::stringstream& _output)
 {
+    this->check_stack();
     as_emittable(*this, obj).emit_statement(obj, _environment, _declarations, _output);
 }
 
 std::unique_ptr<Type> Alma::emit_expression(ObjectRef<Object> obj, ObjectRef<Environment> _environment,
     Declarations& _declarations, std::stringstream& _output)
 {
+    this->check_stack();
     return as_emittable(*this, obj).emit_expression(obj, _environment, _declarations, _output);
 }
 
@@ -448,6 +514,7 @@ Declarations& Alma::get_declarations()
 
 std::string Alma::to_string(ObjectRef<Object> obj)
 {
+    this->check_stack();
     return obj->to_string(obj);
 }
 
@@ -587,7 +654,9 @@ ObjectRef<Object> Alma::intern_character_macro(char c, ObjectRef<Procedure> proc
 
 ObjectRef<Object> Alma::intern_alma_character_macro(char c, ObjectRef<Procedure> proc)
 {
-    return this->intern_character_macro(c, proc, this->alma_package);
+    ObjectRef<Object> result = this->intern_character_macro(c, proc, this->alma_package);
+    this->alma_package->export_character_macro(c);
+    return result;
 }
 
 ObjectRef<Object> Alma::car(ObjectRef<Cons> c)

@@ -31,8 +31,10 @@ private:
     std::vector<ObjectTrackedKeyRef<Package>> used_by_list;
     std::map<std::string, ObjectTrackedRef<Package>> local_names;
     std::map<char, ObjectTrackedRef<Procedure>> character_macros;
+    std::set<char> external_character_macros;
 
     bool conflicts(const std::string& name, ObjectRef<Symbol> symbol);
+    bool character_macro_conflicts(char c, ObjectRef<Procedure> proc);
     void add_present_symbol(ObjectRef<Symbol> symbol);
     void remove_present_symbol(const std::string& name);
 
@@ -80,7 +82,13 @@ public:
     /** Remove every relation with other packages and the home package of its symbols */
     void destroy();
 
-    // Character macros
+    // Character macros. The ones defined in the package have priority over the inherited ones
+    std::optional<ObjectRef<Procedure>> find_present_character_macro(char c);
+    std::optional<ObjectRef<Procedure>> find_external_character_macro(char c);
     std::optional<ObjectRef<Procedure>> find_character_macro(char c);
     ObjectRef<Procedure> intern_character_macro(char c, ObjectRef<Procedure> proc);
+    void set_character_macro(char c, ObjectRef<Procedure> proc);
+    void export_character_macro(char c);
+    void unexport_character_macro(char c);
+    void import_character_macro(char c, ObjectRef<Procedure> proc);
 };

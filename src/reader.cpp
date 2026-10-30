@@ -219,38 +219,35 @@ std::optional<ObjectRef<Object>> Reader::Input::read_list()
     }
 }
 
+static bool is_token_character(int c);
+
 std::optional<ObjectRef<Object>> Reader::Input::read_character()
 {
     int d = this->read_char();
-    if (d != '.') {
+    if (d != '\\') {
         this->unread_char();
         return std::nullopt;
     }
 
+    // A backslash followed by one character is that character, even a delimiter. If more token
+    // characters follow, they are the name of a character, like space or newline
     int e = this->read_char();
-    if (e == '\\') {
-        int f = this->read_char();
-        int special_char;
-        switch (f) {
-        case 'n':
-            special_char = '\n';
-            break;
-        case 'b':
-            special_char = '\b';
-            break;
-        case 't':
-            special_char = '\t';
-            break;
-        case '\\':
-            special_char = '\\';
-            break;
-        default:
-            ithrow("Expected a special character but found " << f);
+    std::string text(1, static_cast<char>(e));
+    if (is_token_character(e)) {
+        while (true) {
+            int f = this->read_char();
+            if (!is_token_character(f)) {
+                this->unread_char();
+                break;
+            }
+            text.push_back(static_cast<char>(f));
         }
-        return this->alma.make<Character>(special_char);
-    } else {
-        return this->alma.make<Character>(e);
     }
+    if (text.size() == 1)
+        return this->alma.make<Character>(text[0]);
+    std::optional<char> named = Character::from_name(text);
+    iassert(named, "Unknown character \\" << text);
+    return this->alma.make<Character>(*named);
 }
 
 std::optional<ObjectRef<Object>> Reader::Input::read_character_macro()
@@ -262,11 +259,31 @@ std::optional<ObjectRef<Object>> Reader::Input::read_character_macro()
     }
 
     int c = this->read_char();
-    std::optional<ObjectRef<Object>> obj = this->read_next_object();
-    iassert(obj, "Expected an object after #" << c);
+    std::optional<ObjectRef<Object>> obj;
+    if (c == '(' || c == '[' || c == '{') {
+        // The brackets are read until their pair, and their objects are received as a list
+        char closing = c == '(' ? ')' : c == '[' ? ']' : '}';
+        std::vector<ObjectRef<Object>> objects;
+        try {
+            for (std::optional<ObjectRef<Object>> object = this->read_next_object(); object;
+                object = this->read_next_object())
+                objects.push_back(*object);
+            int d = this->read_char();
+            iassert(d == closing, "Expected the character '" << closing << "' but found '" << static_cast<char>(d) << "'");
+        } catch (const std::ios_base::failure& e) {
+            ithrow("Expected the character '" << closing << "'");
+        }
+        if (objects.empty())
+            obj = this->alma.intern_alma_symbol("nil");
+        else
+            obj = this->alma.make<Cons>(objects);
+    } else {
+        obj = this->read_next_object();
+        iassert(obj, "Expected an object after #" << static_cast<char>(c));
+    }
 
-    std::optional<ObjectRef<Procedure>> proc = this->alma.find_character_macro(c);
-    iassert(proc.has_value(), "The character " << c << " is not associated to a character macro");
+    std::optional<ObjectRef<Procedure>> proc = this->alma.get_current_package()->find_character_macro(c);
+    iassert(proc.has_value(), "The character " << static_cast<char>(c) << " is not associated to a character macro");
 
     return this->alma.make<CharacterMacro>(*proc, *obj);
 }
@@ -403,6 +420,7 @@ std::optional<ObjectRef<Object>> Reader::Input::read_token()
 
 std::optional<ObjectRef<Object>> Reader::Input::read_next_object()
 {
+    this->alma.check_stack();
     this->read_blank();
     maybe(this->read_string());
     maybe(this->read_list());
