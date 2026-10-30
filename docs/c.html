@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>El lenguaje C · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>El lenguaje C</h1>
+            <p class="lead">Cómo se escriben en ALMA los tipos, las declaraciones, las expresiones y las sentencias de C.</p>
+
+            <h2>Tipos</h2>
+            <p>
+                Los tipos se escriben como listas: el nombre y después los especificadores.
+                <code>const</code> va antes del nombre para calificar el tipo base, o después de
+                <code>*</code> para calificar ese puntero.
+            </p>
+            <table>
+                <tr><th>ALMA</th><th>C</th></tr>
+                <tr><td><code>int</code></td><td><code>int</code></td></tr>
+                <tr><td><code>(char *)</code></td><td><code>char *</code></td></tr>
+                <tr><td><code>(char * *)</code></td><td><code>char **</code></td></tr>
+                <tr><td><code>(int 10)</code></td><td><code>int [10]</code></td></tr>
+                <tr><td><code>(int ((char *) int))</code></td><td><code>int (char *, int)</code></td></tr>
+                <tr><td><code>(int ((char *) &amp;rest))</code></td><td><code>int (char *, ...)</code></td></tr>
+                <tr><td><code>(void (int) *)</code></td><td><code>void (*)(int)</code></td></tr>
+                <tr><td><code>(const int)</code></td><td><code>const int</code></td></tr>
+                <tr><td><code>(const char *)</code></td><td><code>const char *</code></td></tr>
+                <tr><td><code>(char * const)</code></td><td><code>char *const</code></td></tr>
+                <tr><td><code>(const char * const)</code></td><td><code>const char *const</code></td></tr>
+            </table>
+            <p>
+                No se puede asignar a nada <code>const</code> (tampoco a través de punteros ni a
+                miembros de un struct <code>const</code>), y <code>char *</code> se convierte en
+                <code>const char *</code>, pero no al revés.
+            </p>
+
+            <h2>Definiciones y declaraciones</h2>
+<pre><code class="lisp">(function suma int ((a int) (b int))      ; definición
+  (return (+ a b)))
+(function externa int ((x int)))          ; sin cuerpo: declaración
+(function nada void () ())                ; cuerpo vacío
+
+(variable contador int 0)                 ; variable global (valor constante)
+(variable externa int)                    ; sin valor: extern int externa;
+
+(struct Punto (x int) (y int))            ; struct + typedef
+(union Valor (i int) (f float))
+(enum Color ROJO VERDE (AZUL 5) NEGRO)    ; enum + typedef</code></pre>
+            <p>
+                Un <code>enum</code> es un tipo entero y sus constantes son constantes
+                <code>int</code>: se pueden usar en un <code>case</code> o para inicializar
+                variables globales. El valor de una constante debe ser un entero constante y puede
+                usar las anteriores.
+            </p>
+            <p>
+                Dentro de una función, <code>(variable i int 0)</code> define una variable local,
+                con o sin valor.
+            </p>
+
+            <h2>Expresiones</h2>
+            <p>
+                Cada operación se escribe entre paréntesis en el C generado, así que la precedencia
+                de C no importa.
+            </p>
+            <table>
+                <tr><th>ALMA</th><th>C</th></tr>
+                <tr><td><code>(+ a b c)</code> <code>(- a b)</code> <code>(* a b)</code> <code>(/ a b)</code> <code>(% a b)</code></td><td><code>+ - * / %</code></td></tr>
+                <tr><td><code>(- a)</code> <code>(* p)</code> <code>(&amp; x)</code> <code>(aref a i)</code></td><td><code>-a</code>, <code>*p</code>, <code>&amp;x</code>, <code>a[i]</code></td></tr>
+                <tr><td><code>(== a b)</code> <code>(!= a b)</code> <code>(&lt; a b)</code> <code>(&gt; a b)</code> <code>(&lt;= a b)</code> <code>(&gt;= a b)</code></td><td>comparaciones</td></tr>
+                <tr><td><code>(and a b)</code> <code>(or a b)</code> <code>(not a)</code></td><td><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></td></tr>
+                <tr><td><code>(bit-and a b)</code> <code>(bit-or a b)</code> <code>(bit-xor a b)</code> <code>(bit-not a)</code> <code>(&lt;&lt; a n)</code> <code>(&gt;&gt; a n)</code></td><td>operadores de bits</td></tr>
+                <tr><td><code>(= x v)</code> <code>(+= x v)</code> ... <code>(bit-or= x v)</code></td><td>asignaciones</td></tr>
+                <tr><td><code>(++ x)</code> <code>(-- x)</code> <code>(post++ x)</code> <code>(post-- x)</code></td><td>incrementos</td></tr>
+                <tr><td><code>(? c a b)</code> <code>(comma a b)</code> <code>(sizeof x)</code> <code>(cast tipo v)</code></td><td><code>?:</code>, <code>,</code>, <code>sizeof</code>, cast</td></tr>
+                <tr><td><code>(f a b)</code></td><td>llamada a una función</td></tr>
+                <tr><td><code>(p x)</code> <code>(p origen x)</code></td><td><code>p.x</code>, <code>p.origen.x</code> (o <code>-&gt;</code> si <code>p</code> es un puntero)</td></tr>
+            </table>
+
+            <h2>Sentencias</h2>
+<pre><code class="lisp">(if condicion sentencia [sentencia])      ; (block ...) agrupa varias
+(while condicion sentencias...)
+(do-while condicion sentencias...)
+(for (inicio condicion paso) sentencias...)
+(switch valor (case 1 sentencias...) (default sentencias...))
+(break) (continue) (return [valor])
+(label nombre) (goto nombre)</code></pre>
+
+            <h2>Comprobaciones</h2>
+            <p>Antes de escribir el C, <code>alma2c</code> comprueba, entre otras cosas:</p>
+            <ul>
+                <li>que las funciones y variables usadas estén declaradas,</li>
+                <li>el número y el tipo de los argumentos de las llamadas,</li>
+                <li>los tipos de los operadores y de las asignaciones, con las reglas básicas de C,</li>
+                <li>que no haya redefiniciones ni declaraciones incompatibles,</li>
+                <li>que no se modifique nada <code>const</code> ni se pierda <code>const</code> en una conversión,</li>
+                <li>que <code>return</code> devuelva el tipo de la función,</li>
+                <li>que <code>break</code>, <code>continue</code> y <code>goto</code> estén donde pueden estar,</li>
+                <li>que las variables globales se inicialicen con constantes.</li>
+            </ul>
+
+            <h2>Biblioteca estándar</h2>
+            <p>
+                Las funciones, variables y macros de la biblioteca estándar de C ya están declaradas
+                (<code>printf</code>, <code>malloc</code>, <code>strlen</code>, <code>sqrt</code>,
+                <code>EOF</code>, <code>NULL</code>...), con <code>const</code> donde C lo tiene.
+                Solo se añaden al C los <code>#include</code> de lo que se usa.
+            </p>
+
+            <h2>Macros del preprocesador</h2>
+            <p>
+                <code>macro</code> define una macro cuyo cuerpo es código de ALMA que devuelve el
+                código C que la sustituye. Funciona como el preprocesador de C: los argumentos se
+                expanden antes, el resultado se vuelve a expandir y una macro no se expande dentro
+                de su propia expansión. Una macro tiene preferencia sobre una función con el mismo
+                nombre.
+            </p>
+<pre><code class="lisp">(macro cuadrado (x) `(* ,x ,x))
+(macro when (condicion &amp;rest cuerpo) `(if ,condicion (block ,@cuerpo)))</code></pre>
+            <p>
+                La lista de parámetros de <code>macro</code> solo admite símbolos y un
+                <code>&amp;rest</code> al final. Las macros de ALMA, que se ejecutan al compilar, se
+                explican en <a href="procedimientos.html">Funciones y macros</a>.
+            </p>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

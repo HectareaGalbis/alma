@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Funciones y macros · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>Funciones y macros</h1>
+            <p class="lead">Los tres tipos de procedimiento de ALMA y su lista de parámetros.</p>
+
+            <h2>Tipos de procedimiento</h2>
+            <p>Se diferencian en si evalúan los argumentos y en si evalúan el resultado:</p>
+            <table>
+                <tr><th>Definir</th><th>Anónimo</th><th>Argumentos</th><th>Resultado</th></tr>
+                <tr><td><code>(defun nombre (parámetros) ...)</code></td><td><code>(lambda (parámetros) ...)</code></td><td>se evalúan</td><td>no se vuelve a evaluar</td></tr>
+                <tr><td><code>(defmacro nombre (parámetros) ...)</code></td><td><code>(gamma (parámetros) ...)</code></td><td>no se evalúan</td><td>se vuelve a evaluar</td></tr>
+                <tr><td><code>(defspecial nombre (parámetros) ...)</code></td><td><code>(alpha (parámetros) ...)</code></td><td>no se evalúan</td><td>no se vuelve a evaluar</td></tr>
+            </table>
+            <p>
+                El cuerpo se evalúa en el entorno donde se creó el procedimiento y devuelve la
+                última forma, o <code>nil</code> si está vacío. <code>defun</code>,
+                <code>defmacro</code> y <code>defspecial</code> dan al símbolo como valor global el
+                procedimiento anónimo correspondiente.
+            </p>
+<pre><code class="lisp">(defun doble (x) (+ x x))
+(doble 4)                         ; 8
+((lambda (x) (+ x 1)) 1)          ; 2
+
+(defmacro dos-veces (x)
+  (let ((v (gensym)))
+    `(let ((,v ,x)) (list ,v ,v))))
+(dos-veces (+ 1 2))               ; (3 3)
+
+(defspecial cita (x) x)
+(cita (a b c))                    ; (a b c)</code></pre>
+            <p>
+                En <code>dos-veces</code>, <code>gensym</code> crea un
+                <a href="packages.html#simbolos-no-internados">símbolo no internado</a> para la
+                variable, que no puede chocar con ningún símbolo del código que recibe la macro.
+            </p>
+
+            <h2>Lista de parámetros</h2>
+            <p>
+                <code>defun</code>, <code>lambda</code>, <code>defmacro</code>,
+                <code>gamma</code>, <code>defspecial</code> y <code>alpha</code> aceptan la misma
+                lista de parámetros:
+            </p>
+            <table>
+                <tr><th>Parámetro</th><th>Descripción</th></tr>
+                <tr><td><code>a</code></td><td>obligatorio</td></tr>
+                <tr><td><code>(b defecto b-p)</code></td><td>opcional; <code>defecto</code> y <code>b-p</code> se pueden omitir. <code>b-p</code> es <code>t</code> si se pasó el argumento</td></tr>
+                <tr><td><code>:k x</code>, <code>:k (x defecto x-p)</code></td><td>por keyword: se pasa como <code>:k valor</code></td></tr>
+                <tr><td><code>&amp;rest r</code></td><td>lista con los argumentos que sobran tras los opcionales</td></tr>
+                <tr><td><code>&amp;rest-keys otras</code></td><td>tabla hash (<code>eql</code>) con los keywords recibidos que no están declarados</td></tr>
+            </table>
+
+            <h3>Orden y valores por defecto</h3>
+            <p>
+                Los obligatorios, los opcionales y los keywords van en ese orden;
+                <code>&amp;rest</code> y <code>&amp;rest-keys</code> pueden ir en cualquier posición.
+                Un opcional o keyword sin valor por defecto vale <code>nil</code>. Los valores por
+                defecto se evalúan en cada llamada y pueden usar los parámetros anteriores.
+            </p>
+<pre><code class="lisp">(defun opt (a (b 10 b-p)) (list a b b-p))
+(opt 1)                           ; (1 10 nil)
+(opt 1 2)                         ; (1 2 t)
+
+(defun pinta (:color (c 'rojo)) c)
+(pinta)                           ; rojo
+(pinta :color 'azul)              ; azul</code></pre>
+
+            <h3>Keywords en la llamada</h3>
+            <p>
+                En la llamada, los keywords se buscan después de los argumentos obligatorios y
+                opcionales, mezclados con los del <code>&amp;rest</code>, y nunca se meten en él.
+                Un keyword no declarado es un error salvo que haya <code>&amp;rest-keys</code>, y
+                repetir un keyword también es un error. Si no se declara ningún keyword ni
+                <code>&amp;rest-keys</code>, los keywords son valores normales.
+            </p>
+<pre><code class="lisp">(defun f (a (b 10) (c (+ a b) c-p) :k x :j (y 5 y-p) &amp;rest r &amp;rest-keys otras)
+  (list a b c c-p x y y-p r otras))
+
+(f 1)                    ; (1 10 11 nil nil 5 nil nil &lt;hash-table eql 0&gt;)
+(f 1 2 3 4 :k 7 5 :z 9)  ; (1 2 3 t 7 5 nil (4 5) &lt;hash-table eql 1&gt;)
+
+(defun g (a &amp;rest r) (list a r))
+(g 1 :k 2)               ; (1 (:k 2))
+
+(defun opciones (&amp;rest-keys k) (gethash :x k))
+(opciones :x 1 :y 2)     ; 1</code></pre>
+
+            <div class="note">
+                <p>
+                    Las macros del preprocesador de C (<code>macro</code>) tienen su propia lista de
+                    parámetros: solo símbolos y un <code>&amp;rest</code> al final. Ver
+                    <a href="c.html#macros-del-preprocesador">Macros del preprocesador</a>.
+                </p>
+            </div>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

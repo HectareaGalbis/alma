@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Primeros pasos · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>Primeros pasos</h1>
+            <p class="lead">Compilar ALMA, escribir el primer programa y usar el REPL.</p>
+
+            <h2>Compilar</h2>
+            <p>
+                Hace falta CMake (3.10 o posterior) y <code>g++</code> con soporte de C++23. Para
+                compilar el C generado hace falta <code>gcc</code>.
+            </p>
+<pre><code>mkdir -p build &amp;&amp; cd build
+cmake .. &amp;&amp; make</code></pre>
+            <p>Esto genera <code>build/src/alma2c</code>, que traduce un archivo de ALMA a C:</p>
+<pre><code>build/src/alma2c programa.alma -o programa.c</code></pre>
+            <p>El tipo de compilación se elige con <code>CMAKE_BUILD_TYPE</code>:</p>
+            <table>
+                <tr><th>Tipo</th><th>Opciones</th></tr>
+                <tr><td><code>Release</code> (por defecto)</td><td><code>-O2</code>, <code>NDEBUG</code></td></tr>
+                <tr><td><code>Debug</code></td><td><code>-g</code> y avisos</td></tr>
+                <tr><td><code>FastDebug</code></td><td><code>-O2</code>, avisos y <code>-fsanitize=address</code></td></tr>
+            </table>
+<pre><code>cmake -DCMAKE_BUILD_TYPE=Debug ..</code></pre>
+
+            <h2>Instalar</h2>
+            <p><code>cmake --install</code> copia <code>alma2c</code> y el script <code>alma</code> en <code>&lt;prefijo&gt;/bin</code>:</p>
+<pre><code>cmake --install build                      # en /usr/local/bin (puede necesitar sudo)
+cmake --install build --prefix ~/.local    # en ~/.local/bin</code></pre>
+
+            <h2>El primer programa</h2>
+            <p>Guarda esto en <code>hola.alma</code>:</p>
+<pre><code class="lisp">(function main int ()
+  (puts "Hola mundo")
+  (return 0))</code></pre>
+            <p>Y compílalo y ejecútalo:</p>
+<pre><code>./alma -o hola hola.alma
+./hola</code></pre>
+            <p>
+                <code>puts</code> no se declara: la biblioteca estándar de C ya está declarada y
+                ALMA añade <code>#include &lt;stdio.h&gt;</code> porque se usa.
+            </p>
+
+            <h2>El script alma</h2>
+            <p>
+                El script <code>alma</code> traduce los archivos <code>.alma</code> con
+                <code>alma2c</code> y llama a <code>gcc</code>. Todos los demás argumentos se pasan
+                a <code>gcc</code> sin cambios, así que se pueden mezclar archivos
+                <code>.alma</code>, <code>.c</code> y <code>.o</code> y usar cualquier opción de
+                <code>gcc</code>:
+            </p>
+<pre><code>./alma -o hola examples/01_hola_mundo.alma           # ejecutable
+./alma -c programa.alma                              # objeto programa.o
+./alma -Wall -O2 -o prog main.alma util.c -lm        # cualquier opción de gcc
+./alma --emit-c programa.alma                        # solo genera programa.c</code></pre>
+            <p>
+                <code>alma2c</code> se busca en <code>$ALMA2C</code>, junto al script, en
+                <code>build/src/</code> y en el <code>PATH</code>.
+            </p>
+
+            <h2>El REPL</h2>
+            <p>
+                <code>alma2c</code> sin argumentos abre un REPL: lee una forma, la evalúa y escribe
+                el resultado. Las formas de C que se escriban se van acumulando.
+            </p>
+<pre><code class="lisp">alma&gt; (+ 1 2)
+3
+alma&gt; (function main int () (puts "Hola") (return 0))
+nil
+alma&gt; (exit t "hola")</code></pre>
+            <p><code>exit</code> termina el REPL:</p>
+            <table>
+                <tr><th>Forma</th><th>Descripción</th></tr>
+                <tr><td><code>(exit nil)</code></td><td>sale sin generar nada</td></tr>
+                <tr><td><code>(exit t)</code></td><td>compila con <code>gcc</code> el C acumulado (en <code>a.out</code>)</td></tr>
+                <tr><td><code>(exit t "nombre")</code></td><td>compila el C acumulado en el ejecutable <code>nombre</code></td></tr>
+            </table>
+            <p>
+                En un archivo, <code>(exit t)</code> deja de leerlo y escribe el C generado hasta ese
+                punto, y <code>(exit nil)</code> lo deja de leer sin escribir nada y
+                <code>alma2c</code> termina con error.
+            </p>
+
+            <h2>Ejemplos</h2>
+            <p>En <code>examples/</code>. Cada ejemplo indica cómo compilarlo.</p>
+            <table>
+                <tr><th>Archivo</th><th>Contenido</th></tr>
+                <tr><td><code>01_hola_mundo.alma</code></td><td>Programa mínimo</td></tr>
+                <tr><td><code>02_operadores.alma</code></td><td>Operadores, asignaciones, <code>cast</code>, <code>sizeof</code></td></tr>
+                <tr><td><code>03_control.alma</code></td><td><code>if</code>, bucles, <code>switch</code>, <code>break</code>, <code>continue</code>, <code>goto</code></td></tr>
+                <tr><td><code>04_funciones.alma</code></td><td>Declaraciones, recursión, punteros a función</td></tr>
+                <tr><td><code>05_punteros_y_arrays.alma</code></td><td>Punteros, aritmética de punteros, arrays</td></tr>
+                <tr><td><code>06_structs_y_unions.alma</code></td><td>Structs anidados, listas enlazadas, unions</td></tr>
+                <tr><td><code>07_biblioteca_estandar.alma</code></td><td><code>string.h</code>, <code>stdlib.h</code>, <code>math.h</code>... (necesita <code>-lm</code>)</td></tr>
+                <tr><td><code>08_macros.alma</code></td><td>Macros del preprocesador</td></tr>
+                <tr><td><code>09_generar_codigo.alma</code></td><td>Generar C desde ALMA con <code>emit</code></td></tr>
+                <tr><td><code>10_marcianitos.alma</code></td><td>Un juego de marcianitos con SDL2</td></tr>
+            </table>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Packages y macro characters · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>Packages y macro characters</h1>
+            <p class="lead">
+                Los packages agrupan símbolos y macro characters. Funcionan como en Common Lisp,
+                con algunas diferencias.
+            </p>
+
+            <h2>Packages</h2>
+            <p>Al empezar hay tres packages:</p>
+            <table>
+                <tr><th>Package</th><th>Contenido</th></tr>
+                <tr><td><code>alma</code></td><td>todo lo que define ALMA, exportado</td></tr>
+                <tr><td><code>keyword</code></td><td>los keywords (<code>:nombre</code>), que se evalúan a sí mismos</td></tr>
+                <tr><td><code>alma-user</code></td><td>el package actual al empezar; usa <code>alma</code></td></tr>
+            </table>
+            <p>
+                <code>*package*</code> es el package actual: en él se buscan y se crean los
+                símbolos que se leen. <code>in-package</code> lo cambia, y <code>load</code> lo
+                restaura al terminar de cargar un archivo.
+            </p>
+<pre><code class="lisp">(make-package "geo" :use "alma")
+(in-package "geo")
+(defun area (x) (+ x x))
+(export 'area)
+
+(in-package "alma-user")
+(geo:area 3)                  ; 6</code></pre>
+            <div class="note">
+                <p>
+                    Un package creado sin <code>:use</code> no usa <code>alma</code>, así que dentro
+                    no se puede escribir <code>defun</code> sino <code>alma:defun</code>.
+                </p>
+            </div>
+
+            <h3>Diferencias con Common Lisp</h3>
+            <ul>
+                <li>Un package solo tiene un nombre: no hay <em>nicknames</em>. En su lugar, cada package puede dar un <a href="#nombres-locales">nombre local</a> a otro.</li>
+                <li>Los símbolos no exportados son privados: <code>pkg::nombre</code> es un error al leer.</li>
+                <li>Los <a href="#macro-characters">macro characters</a> pertenecen a un package y se heredan, exportan e importan como los símbolos.</li>
+                <li>No hay <code>defpackage</code>: los packages se crean y se modifican con funciones.</li>
+            </ul>
+
+            <h2>Símbolos</h2>
+            <p>
+                Un símbolo es <em>accesible</em> en un package si está en él (es <em>presente</em>)
+                o si es un símbolo exportado de un package que usa. Al leer:
+            </p>
+            <table>
+                <tr><th>Sintaxis</th><th>Símbolo</th></tr>
+                <tr><td><code>nombre</code></td><td>el accesible con ese nombre en el package actual; si no hay, se crea en él</td></tr>
+                <tr><td><code>pkg:nombre</code></td><td>el exportado de <code>pkg</code>; es un error si no está exportado</td></tr>
+                <tr><td><code>pkg::nombre</code></td><td>siempre es un error</td></tr>
+                <tr><td><code>:nombre</code></td><td>el keyword <code>nombre</code></td></tr>
+                <tr><td><code>::nombre</code></td><td>un <a href="#simbolos-no-internados">símbolo no internado</a> nuevo</td></tr>
+            </table>
+            <p>
+                Al escribir un símbolo se pone el prefijo necesario para volver a leerlo desde el
+                package actual: <code>geo:area</code>, <code>:k</code> o <code>::x</code>. Un
+                símbolo no exportado de otro package se escribe <code>pkg::nombre</code>, aunque no
+                se pueda leer.
+            </p>
+
+            <h3>Conflictos y shadowing</h3>
+            <p>
+                Dos símbolos distintos con el mismo nombre no pueden ser accesibles a la vez en un
+                package. <code>use-package</code>, <code>import</code> y <code>export</code> dan un
+                error si lo provocarían:
+            </p>
+<pre><code class="lisp">(use-package "x")   ; Using x from alma-user causes a name conflict with list</code></pre>
+            <p>
+                <code>shadow</code> crea en el package un símbolo propio que tapa al heredado, y
+                <code>shadowing-import</code> hace lo mismo con un símbolo que ya existe. Los
+                símbolos que tapan a otros no provocan conflictos.
+            </p>
+<pre><code class="lisp">(shadow "car")
+'car                          ; ahora es alma-user::car, no alma:car</code></pre>
+
+            <h3 id="nombres-locales">Nombres locales</h3>
+            <p>
+                Un package puede llamar a otro con un nombre propio, que solo vale cuando él es el
+                package actual. Los nombres locales se buscan antes que los nombres globales.
+            </p>
+<pre><code class="lisp">(add-package-local-name "g" "geo")
+(g:area 3)                    ; 6
+(package-local-names "alma-user")   ; (("g" . &lt;package geo&gt;))</code></pre>
+
+            <h2>Símbolos no internados</h2>
+            <p>
+                Un símbolo no internado no pertenece a ningún package, así que no puede chocar con
+                ningún otro símbolo. Se escribe con <code>::</code> delante y cada lectura crea un
+                símbolo nuevo, aunque tenga el mismo nombre. Son útiles en las macros, para crear
+                variables que no choquen con las del código que reciben.
+            </p>
+            <table>
+                <tr><th>Forma</th><th>Descripción</th></tr>
+                <tr><td><code>::foo</code></td><td>lee un símbolo no internado nuevo llamado <code>foo</code></td></tr>
+                <tr><td><code>(make-symbol "nombre")</code></td><td>crea un símbolo no internado con ese nombre</td></tr>
+                <tr><td><code>(gensym [prefijo])</code></td><td>crea un símbolo no internado con el prefijo (<code>"G"</code> por defecto) y un contador</td></tr>
+            </table>
+<pre><code class="lisp">(eq '::foo '::foo)            ; nil
+(symbol-package '::foo)       ; nil
+(make-symbol "bar")           ; ::bar
+(gensym)                      ; ::G0
+(gensym "X")                  ; ::X1</code></pre>
+
+            <h2>Funciones de packages</h2>
+            <p>
+                Un package se puede indicar con el propio package, con un string o con un símbolo,
+                y se busca primero entre los nombres locales del package actual. Las funciones que
+                reciben símbolos o packages aceptan también una lista de ellos. El último argumento
+                opcional, <code>[pkg]</code>, es el package actual por defecto.
+            </p>
+
+            <h3>Crear y buscar</h3>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(make-package nombre [:use packages])</code></td><td>crea un package que usa los packages dados</td></tr>
+                <tr><td><code>(find-package nombre)</code></td><td>el package, o <code>nil</code></td></tr>
+                <tr><td><code>(delete-package pkg)</code></td><td>borra el package; sus símbolos se quedan sin package. No se pueden borrar <code>alma</code>, <code>keyword</code> ni el actual</td></tr>
+                <tr><td><code>(rename-package pkg nombre)</code></td><td>cambia el nombre del package</td></tr>
+                <tr><td><code>(package-name pkg)</code></td><td>el nombre como string</td></tr>
+                <tr><td><code>(list-all-packages)</code></td><td>todos los packages</td></tr>
+                <tr><td><code>(in-package pkg)</code></td><td>cambia el package actual</td></tr>
+            </table>
+
+            <h3>Símbolos de un package</h3>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(intern "nombre" [pkg])</code></td><td>el símbolo accesible con ese nombre, o uno nuevo en el package</td></tr>
+                <tr><td><code>(find-symbol "nombre" [pkg])</code></td><td>el símbolo accesible con ese nombre, o <code>nil</code></td></tr>
+                <tr><td><code>(unintern símbolo [pkg])</code></td><td>quita el símbolo del package; <code>t</code> si estaba</td></tr>
+                <tr><td><code>(symbol-package símbolo)</code></td><td>el package del símbolo, o <code>nil</code></td></tr>
+                <tr><td><code>(export símbolos [pkg])</code>, <code>(unexport símbolos [pkg])</code></td><td>exporta o deja de exportar</td></tr>
+                <tr><td><code>(import símbolos [pkg])</code></td><td>hace presentes símbolos de otros packages</td></tr>
+                <tr><td><code>(shadow nombres [pkg])</code></td><td>crea símbolos propios que tapan a los heredados</td></tr>
+                <tr><td><code>(shadowing-import símbolos [pkg])</code></td><td>importa símbolos tapando a los que haya con su nombre</td></tr>
+                <tr><td><code>(package-shadowing-symbols pkg)</code></td><td>los símbolos que tapan a otros</td></tr>
+            </table>
+
+            <h3>Relaciones entre packages</h3>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(use-package packages [pkg])</code>, <code>(unuse-package packages [pkg])</code></td><td>empieza o deja de heredar sus símbolos y macro characters exportados</td></tr>
+                <tr><td><code>(package-use-list pkg)</code>, <code>(package-used-by-list pkg)</code></td><td>los packages que usa y los que lo usan</td></tr>
+                <tr><td><code>(add-package-local-name nombre package [pkg])</code></td><td>da un nombre local a <code>package</code> dentro de <code>pkg</code></td></tr>
+                <tr><td><code>(remove-package-local-name nombre [pkg])</code></td><td>quita el nombre local; <code>t</code> si existía</td></tr>
+                <tr><td><code>(package-local-names pkg)</code></td><td>lista de pares <code>(nombre . package)</code></td></tr>
+            </table>
+
+            <h2>Macro characters</h2>
+            <p>
+                <code>#c objeto</code> llama al procedimiento asociado al carácter <code>c</code> en
+                el package actual con el objeto, sin evaluarlo, y evalúa su resultado. Tras
+                <code>#(</code>, <code>#[</code> y <code>#{</code> se leen objetos hasta la pareja
+                <code>)</code>, <code>]</code> o <code>}</code> y el procedimiento los recibe como
+                una lista.
+            </p>
+<pre><code class="lisp">(set-character-macro \! (lambda (x) (list 'quote (list x x))))
+#!hola                        ; (hola hola)
+
+(set-character-macro \[ (lambda (xs) (list 'quote (reverse xs))))
+#[1 2 3]                      ; (3 2 1)</code></pre>
+            <p>
+                El procedimiento puede ser una función, una macro o un operador especial. El package
+                <code>alma</code> exporta <code>#(</code> (vectores) y <code>#{</code> (tablas
+                hash).
+            </p>
+
+            <h3>Herencia</h3>
+            <p>
+                Un macro character se busca primero en el package actual y después entre los
+                exportados de los packages que usa. Para que otro package lo herede hay que
+                exportarlo, y se puede importar uno de otro package sin usarlo entero. Como con los
+                símbolos, dos macro characters distintos para el mismo carácter no pueden ser
+                accesibles a la vez, salvo que el package defina el suyo.
+            </p>
+<pre><code class="lisp">(make-package "a" :use "alma")
+(in-package "a")
+(set-character-macro \[ (lambda (xs) (list 'quote (reverse xs))))
+(export-character-macro \[)
+
+(in-package "alma-user")
+(use-package "a")
+#[1 2 3]                      ; (3 2 1)</code></pre>
+
+            <h3>Funciones de macro characters</h3>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(set-character-macro c procedimiento [pkg])</code></td><td>define el macro character en el package</td></tr>
+                <tr><td><code>(find-character-macro c [pkg])</code></td><td>el procedimiento accesible para el carácter, o <code>nil</code></td></tr>
+                <tr><td><code>(export-character-macro caracteres [pkg])</code></td><td>lo exporta para los packages que usen <code>pkg</code></td></tr>
+                <tr><td><code>(unexport-character-macro caracteres [pkg])</code></td><td>lo deja de exportar</td></tr>
+                <tr><td><code>(import-character-macro caracteres desde [pkg])</code></td><td>copia en <code>pkg</code> los macro characters del package <code>desde</code></td></tr>
+            </table>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALMA · Un Lisp que genera C</title>
+    <meta name="description" content="ALMA es un lenguaje de la familia Lisp que genera código C.">
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <section class="hero">
+                <h1>AL<span>MA</span>: un Lisp que genera C</h1>
+                <p class="lead">
+                    Un programa de ALMA se ejecuta al compilar. El código C que produce son datos
+                    de ALMA (listas), así que se puede construir, transformar y generar con el
+                    propio lenguaje antes de convertirlo en C.
+                </p>
+            </section>
+
+            <div class="side-by-side">
+                <div>
+                    <div class="label">ALMA</div>
+<pre><code class="lisp">(function main int ()
+  (puts "Hola mundo")
+  (return 0))</code></pre>
+                </div>
+                <div>
+                    <div class="label">C</div>
+<pre><code>#include &lt;stdio.h&gt;
+
+int main(void)
+{
+    puts("Hola mundo");
+    return 0;
+}</code></pre>
+                </div>
+            </div>
+
+            <p>
+                El código generado se comprueba antes de escribirse: tipos, declaraciones, ámbitos,
+                etiquetas... Solo se añaden los <code>#include</code> de la biblioteca estándar que
+                se usan.
+            </p>
+
+            <div class="note">
+                <p>ALMA es una prueba de concepto en desarrollo.</p>
+            </div>
+
+            <h2>Qué tiene</h2>
+            <div class="cards">
+                <a class="card" href="c.html">
+                    <strong>C con sintaxis de Lisp</strong>
+                    <span>Funciones, structs, unions, enums, punteros y macros, con comprobación de tipos.</span>
+                </a>
+                <a class="card" href="generar-c.html">
+                    <strong>Generar C</strong>
+                    <span>emit recibe código C como datos y la introspección consulta lo ya declarado.</span>
+                </a>
+                <a class="card" href="lenguaje.html">
+                    <strong>Un Lisp al compilar</strong>
+                    <span>Quasiquote, let, lambda, macros, characters, keywords y símbolos no internados.</span>
+                </a>
+                <a class="card" href="procedimientos.html">
+                    <strong>Parámetros flexibles</strong>
+                    <span>Argumentos opcionales, por keyword, &amp;rest y &amp;rest-keys.</span>
+                </a>
+                <a class="card" href="datos.html">
+                    <strong>Estructuras de datos</strong>
+                    <span>Listas, vectores y tablas hash con eq, eql, equal, equalp o tu propio test.</span>
+                </a>
+                <a class="card" href="packages.html">
+                    <strong>Packages</strong>
+                    <span>Como en Common Lisp, con nombres locales, símbolos privados y macro characters heredables.</span>
+                </a>
+            </div>
+
+            <h2>Por dónde empezar</h2>
+            <ul>
+                <li><a href="empezar.html">Primeros pasos</a>: compilar ALMA, escribir el primer programa y usar el REPL.</li>
+                <li><a href="c.html">El lenguaje C</a>: cómo se escribe C en ALMA.</li>
+                <li><a href="generar-c.html">Generar C</a>: el motivo de que ALMA exista.</li>
+            </ul>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

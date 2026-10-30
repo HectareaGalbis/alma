@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sobre el proyecto · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>Sobre el proyecto</h1>
+            <p class="lead">Limitaciones, organización del código y licencia.</p>
+
+            <h2>Limitaciones</h2>
+            <ul>
+                <li>No hay literales de C con decimales, hexadecimales ni de carácter.</li>
+                <li>No hay <code>volatile</code>, <code>restrict</code>, inicializadores de arrays o structs, ni arrays o structs globales definidos.</li>
+                <li>Un <code>enum</code> no se puede declarar sin definir sus constantes, como en C estándar.</li>
+                <li>No se pueden incluir cabeceras que no sean de la biblioteca estándar: las funciones de otras bibliotecas se declaran con <code>function</code> sin cuerpo.</li>
+                <li>Los nombres de tipo son de una sola palabra (<code>long</code>, pero no <code>unsigned long</code>).</li>
+                <li><code>0</code> no se acepta como puntero nulo: hay que usar <code>NULL</code>.</li>
+            </ul>
+
+            <h2>Estructura del código</h2>
+            <table>
+                <tr><th>Ruta</th><th>Contenido</th></tr>
+                <tr><td><code>alma</code></td><td>script que traduce con <code>alma2c</code> y compila con <code>gcc</code></td></tr>
+                <tr><td><code>src/main.cpp</code></td><td>programa <code>alma2c</code></td></tr>
+                <tr><td><code>src/alma.cpp</code>, <code>src/reader.cpp</code></td><td>intérprete y lector de ALMA</td></tr>
+                <tr><td><code>src/object/</code></td><td>objetos de ALMA: símbolos, packages, listas, vectores, tablas hash, funciones, macros...</td></tr>
+                <tr><td><code>src/interpiler/</code></td><td>traducción a C: tipos, declaraciones, operadores, biblioteca estándar y emisión del código</td></tr>
+                <tr><td><code>src/gc/</code></td><td>recolector de basura</td></tr>
+                <tr><td><code>src/interfaces/</code></td><td>interfaces comunes de los objetos (evaluar, expandir, emitir...)</td></tr>
+                <tr><td><code>examples/</code></td><td>ejemplos</td></tr>
+                <tr><td><code>docs/</code></td><td>esta documentación</td></tr>
+            </table>
+
+            <h2>Licencia</h2>
+            <p>
+                MIT. Ver
+                <a href="https://github.com/HectareaGalbis/ALMA/blob/main/LICENSE"><code>LICENSE</code></a>,
+                <a href="https://github.com/HectareaGalbis/ALMA/blob/main/AUTHORS"><code>AUTHORS</code></a> y
+                <a href="https://github.com/HectareaGalbis/ALMA/blob/main/CONTRIBUTORS"><code>CONTRIBUTORS</code></a>.
+            </p>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

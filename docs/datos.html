@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Listas, vectores y tablas hash · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>Listas, vectores y tablas hash</h1>
+            <p class="lead">Las estructuras de datos de ALMA para manipular datos al compilar.</p>
+
+            <h2>Listas</h2>
+            <p>
+                Una lista es una cadena de pares (<em>conses</em>) que termina en
+                <code>nil</code>. <code>(cons 1 2)</code> crea un par, que se escribe
+                <code>(1 . 2)</code>.
+            </p>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(cons a b)</code>, <code>(list a b ...)</code></td><td>crear un par o una lista</td></tr>
+                <tr><td><code>(car x)</code>, <code>(cdr x)</code></td><td>primer elemento y resto de un par; de <code>nil</code> devuelven <code>nil</code></td></tr>
+                <tr><td><code>first</code>, <code>second</code>, <code>third</code>, <code>rest</code></td><td>elementos 0, 1 y 2, y todo menos el primero</td></tr>
+                <tr><td><code>(nth n lista)</code>, <code>(nthcdr n lista)</code></td><td>elemento <code>n</code> y lista a partir del elemento <code>n</code></td></tr>
+                <tr><td><code>(last lista)</code></td><td>el último par</td></tr>
+                <tr><td><code>(length lista)</code></td><td>número de elementos</td></tr>
+                <tr><td><code>(append a b ... final)</code></td><td>une las listas; el último argumento es el final y puede no ser una lista</td></tr>
+                <tr><td><code>(reverse lista)</code></td><td>lista nueva en orden inverso</td></tr>
+                <tr><td><code>(member x lista)</code></td><td>la lista desde el primer elemento <code>eq</code> a <code>x</code>, o <code>nil</code></td></tr>
+                <tr><td><code>(rplaca par x)</code>, <code>(rplacd par x)</code></td><td>cambian el <code>car</code> o el <code>cdr</code> del par y lo devuelven</td></tr>
+                <tr><td><code>consp</code>, <code>listp</code>, <code>null</code>, <code>atom</code></td><td>si es un par, una lista (par o <code>nil</code>), <code>nil</code>, o no es un par</td></tr>
+                <tr><td><code>(endp lista)</code></td><td>si la lista está vacía; es un error si no es una lista</td></tr>
+            </table>
+<pre><code class="lisp">(append '(1 2) '(3) 4)       ; (1 2 3 . 4)
+(member 'b '(a b c))         ; (b c)
+(nth 1 '(a b c))             ; b
+(last '(a b c))              ; (c)
+(rplaca (list 1 2) 9)        ; (9 2)</code></pre>
+
+            <h2>Igualdad</h2>
+            <table>
+                <tr><th>Función</th><th>Dos objetos son iguales si...</th></tr>
+                <tr><td><code>eq</code></td><td>son el mismo objeto</td></tr>
+                <tr><td><code>eql</code></td><td>son <code>eq</code>, o son enteros o characters con el mismo valor</td></tr>
+                <tr><td><code>equal</code></td><td>son <code>eql</code>, strings con el mismo contenido o listas con elementos <code>equal</code></td></tr>
+                <tr><td><code>equalp</code></td><td>como <code>equal</code> sin distinguir mayúsculas en characters y strings, y también vectores y tablas hash con el mismo contenido</td></tr>
+            </table>
+<pre><code class="lisp">(eq 1 1)                     ; nil: cada 1 es un objeto distinto
+(eql 1 1)                    ; t
+(equal '(1 (2 "x")) '(1 (2 "x")))   ; t
+(equalp '(\A "AB") '(\a "ab"))      ; t
+(equalp #(1) #(1))           ; t</code></pre>
+
+            <h2>Vectores</h2>
+            <p>
+                Los vectores están implementados con una cola doble. Aplicar un vector a un índice
+                devuelve su elemento.
+            </p>
+<pre><code class="lisp">(set-symbol-value 'v (vector 1 2 3))     ; [1 2 3]
+(v 0)                                    ; 1
+(vector-set v 1 'dos)                    ; [1 dos 3]
+(vector-push-back v 4)                   ; [1 dos 3 4]
+(vector-pop-front v)                     ; 1
+#(a b c)                                 ; [a b c]</code></pre>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(vector a b ...)</code>, <code>(make-vector n [valor])</code>, <code>#(a b ...)</code></td><td>crear un vector</td></tr>
+                <tr><td><code>(v i)</code>, <code>(vector-set v i x)</code></td><td>leer y escribir un elemento</td></tr>
+                <tr><td><code>vector-front</code>, <code>vector-back</code></td><td>primer y último elemento</td></tr>
+                <tr><td><code>vector-push-front</code>, <code>vector-push-back</code></td><td>añadir al principio o al final</td></tr>
+                <tr><td><code>vector-pop-front</code>, <code>vector-pop-back</code></td><td>quitar del principio o del final</td></tr>
+                <tr><td><code>(vector-insert v i x)</code>, <code>(vector-erase v i)</code></td><td>insertar antes de <code>i</code> y quitar</td></tr>
+                <tr><td><code>vector-length</code>, <code>vector-empty-p</code>, <code>vectorp</code></td><td>consultas</td></tr>
+                <tr><td><code>vector-clear</code>, <code>vector-to-list</code>, <code>list-to-vector</code></td><td>vaciar y convertir</td></tr>
+            </table>
+            <p>
+                Las funciones que modifican el vector lo devuelven; las que quitan un elemento
+                devuelven ese elemento. Los vectores son datos de ALMA y no se pueden emitir como C.
+            </p>
+
+            <h2>Tablas hash</h2>
+            <p>
+                Una tabla hash asocia claves a valores. Dos claves son la misma si lo dice el test
+                de la tabla, que por defecto es <code>eql</code>.
+            </p>
+<pre><code class="lisp">(set-symbol-value 'h (make-hash-table :test 'equal))
+(puthash "uno" 1 h)          ; 1
+(gethash "uno" h)            ; 1
+(gethash "dos" h 'nada)      ; nada
+(hash-table-count h)         ; 1
+#{"a" 1 "b" 2}               ; &lt;hash-table equal 2&gt;</code></pre>
+
+            <h3>Crear una tabla</h3>
+            <p><code>make-hash-table</code> recibe argumentos por keyword:</p>
+            <table>
+                <tr><th>Argumento</th><th>Descripción</th></tr>
+                <tr><td><code>:test</code></td><td><code>eq</code>, <code>eql</code>, <code>equal</code>, <code>equalp</code> (el símbolo o la función) o una función propia que recibe dos claves</td></tr>
+                <tr><td><code>:hash-function</code></td><td>función que recibe una clave y devuelve un entero, el mismo para las claves que el test considera iguales. Es obligatoria con un test propio</td></tr>
+                <tr><td><code>:size</code></td><td>número de entradas para las que reservar espacio</td></tr>
+            </table>
+<pre><code class="lisp">; Claves iguales si tienen el mismo primer elemento
+(make-hash-table :test (lambda (a b) (eq (car a) (car b)))
+                 :hash-function (lambda (k) 0))</code></pre>
+            <p>
+                <code>#{...}</code> crea una tabla con el test <code>equal</code> a partir de pares
+                de clave y valor, que no se evalúan.
+            </p>
+
+            <h3>Funciones</h3>
+            <table>
+                <tr><th>Función</th><th>Descripción</th></tr>
+                <tr><td><code>(gethash clave tabla [defecto])</code></td><td>el valor de la clave, o <code>defecto</code> (<code>nil</code> si no se da)</td></tr>
+                <tr><td><code>(puthash clave valor tabla)</code></td><td>asocia el valor a la clave y lo devuelve</td></tr>
+                <tr><td><code>(remhash clave tabla)</code></td><td>quita la clave; <code>t</code> si estaba</td></tr>
+                <tr><td><code>(clrhash tabla)</code></td><td>vacía la tabla y la devuelve</td></tr>
+                <tr><td><code>(maphash f tabla)</code></td><td>llama a <code>(f clave valor)</code> por cada entrada; devuelve <code>nil</code></td></tr>
+                <tr><td><code>(hash-table-contains-p clave tabla)</code></td><td>si la clave está</td></tr>
+                <tr><td><code>(hash-table-count tabla)</code></td><td>número de entradas</td></tr>
+                <tr><td><code>(hash-table-test tabla)</code></td><td>el símbolo del test, o la función si es propio</td></tr>
+                <tr><td><code>(hash-table-p x)</code></td><td>si es una tabla hash</td></tr>
+            </table>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

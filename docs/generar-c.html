@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generar C · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>Generar C</h1>
+            <p class="lead">El código C son datos de ALMA: se puede construir con el propio lenguaje y consultar lo ya declarado.</p>
+
+            <h2>emit</h2>
+            <p>
+                <code>function</code>, <code>variable</code>, <code>struct</code>,
+                <code>union</code>, <code>enum</code> y <code>macro</code> son macros de ALMA que se
+                expanden a una llamada a <code>emit</code>. <code>emit</code> es una función que
+                recibe código C como datos, así que un programa puede construirlo con todo lo que
+                hay en ALMA: <code>defun</code>, <code>defmacro</code>, <code>let</code>,
+                <code>lambda</code>, <code>if</code>, <code>list</code>, quasiquote...
+            </p>
+<pre><code class="lisp">; Genera una función que devuelve una constante por cada elemento de la lista
+(defun constantes (lista)
+  (if lista
+    (progn
+      (emit `(function ,(car (car lista)) int () (return ,(car (cdr (car lista))))))
+      (constantes (cdr lista)))))
+
+(constantes '((uno 1) (dos 2) (tres 3)))</code></pre>
+
+            <h2>Introspección</h2>
+            <p>
+                Desde ALMA se puede consultar lo que <code>emit</code> conoce, incluida la
+                biblioteca estándar. Las funciones reciben nombres como símbolos y devuelven los
+                tipos con la sintaxis de ALMA, así que sirven para generar código. Devuelven
+                <code>nil</code> si lo consultado no existe.
+            </p>
+            <table>
+                <tr><th>Función</th><th>Ejemplo</th><th>Resultado</th></tr>
+                <tr><td><code>c-declared-p</code>, <code>c-defined-p</code></td><td><code>(c-defined-p 'suma)</code></td><td><code>t</code></td></tr>
+                <tr><td><code>c-function-p</code>, <code>c-variable-p</code>, <code>c-constant-p</code>, <code>c-standard-p</code></td><td><code>(c-constant-p 'EOF)</code></td><td><code>t</code></td></tr>
+                <tr><td><code>c-struct-p</code>, <code>c-union-p</code>, <code>c-enum-p</code>, <code>c-macro-p</code></td><td><code>(c-enum-p 'Color)</code></td><td><code>t</code></td></tr>
+                <tr><td><code>c-type</code>, <code>c-header</code></td><td><code>(c-type 'printf)</code></td><td><code>(int ((const char *) &amp;rest))</code></td></tr>
+                <tr><td><code>c-function-result</code>, <code>c-function-parameters</code>, <code>c-function-variadic-p</code></td><td><code>(c-function-parameters 'suma)</code></td><td><code>(int int)</code></td></tr>
+                <tr><td><code>c-record-defined-p</code>, <code>c-record-members</code>, <code>c-member-type</code></td><td><code>(c-record-members 'Punto)</code></td><td><code>((x int) (y int))</code></td></tr>
+                <tr><td><code>c-enum-constants</code></td><td><code>(c-enum-constants 'Color)</code></td><td><code>(ROJO VERDE AZUL NEGRO)</code></td></tr>
+                <tr><td><code>c-type-string</code>, <code>c-pointer-p</code>, <code>c-array-p</code>, <code>c-const-p</code></td><td><code>(c-type-string '(const char *))</code></td><td><code>"const char *"</code></td></tr>
+                <tr><td><code>c-functions</code>, <code>c-variables</code>, <code>c-records</code>, <code>c-enums</code></td><td><code>(c-records)</code></td><td><code>(Punto Valor)</code></td></tr>
+            </table>
+            <p>
+                Por ejemplo, una función de ALMA puede generar una función de C que imprima todos
+                los campos de cualquier struct a partir de <code>(c-record-members 'Punto)</code>.
+            </p>
+            <div class="note">
+                <p>
+                    Solo se ven las declaraciones globales de las formas ya emitidas: las macros se
+                    expanden antes de emitir su forma, así que no ven las variables locales.
+                </p>
+            </div>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALMA al compilar · ALMA</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="assets/site.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <button class="menu-button" aria-label="Menú">☰</button>
+        <a class="brand" href="index.html">AL<span>MA</span></a>
+        <span class="spacer"></span>
+        <a class="github" href="https://github.com/HectareaGalbis/ALMA">GitHub</a>
+    </header>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="content">
+            <h1>ALMA al compilar</h1>
+            <p class="lead">
+                Todo lo que no es C se ejecuta al compilar. Esta página explica cómo se lee y se
+                evalúa ese código.
+            </p>
+
+            <h2>Sintaxis</h2>
+            <table>
+                <tr><th>Sintaxis</th><th>Descripción</th></tr>
+                <tr><td><code>; comentario</code></td><td>comentario hasta el final de la línea</td></tr>
+                <tr><td><code>42</code>, <code>-7</code></td><td>enteros</td></tr>
+                <tr><td><code>"texto"</code></td><td>string</td></tr>
+                <tr><td><code>\a</code>, <code>\space</code></td><td>character</td></tr>
+                <tr><td><code>nombre</code></td><td>símbolo del package actual</td></tr>
+                <tr><td><code>:nombre</code></td><td>keyword</td></tr>
+                <tr><td><code>pkg:nombre</code></td><td>símbolo exportado del package <code>pkg</code></td></tr>
+                <tr><td><code>::nombre</code></td><td>símbolo no internado nuevo</td></tr>
+                <tr><td><code>(a b c)</code>, <code>(a . b)</code></td><td>lista y par</td></tr>
+                <tr><td><code>'x</code>, <code>`x</code>, <code>,x</code>, <code>,@x</code></td><td><code>(quote x)</code>, <code>(quasiquote x)</code>, <code>(unquote x)</code>, <code>(slice-unquote x)</code></td></tr>
+                <tr><td><code>#(1 2 3)</code></td><td>vector</td></tr>
+                <tr><td><code>#{"a" 1 "b" 2}</code></td><td>tabla hash</td></tr>
+                <tr><td><code>#c objeto</code></td><td>macro character <code>c</code></td></tr>
+            </table>
+
+            <h3>Strings</h3>
+            <p>
+                Dentro de un string, <code>\n</code> es un salto de línea, <code>\t</code> un
+                tabulador, <code>\"</code> unas comillas y <code>\\</code> una barra.
+            </p>
+
+            <h3>Characters</h3>
+            <p>
+                Una barra seguida de un carácter es ese carácter, aunque sea un delimitador:
+                <code>\a</code>, <code>\(</code>, <code>\;</code>. Si después vienen más letras, es
+                el nombre de un carácter:
+            </p>
+            <table>
+                <tr><th>Nombre</th><th>Carácter</th></tr>
+                <tr><td><code>\space</code></td><td>espacio</td></tr>
+                <tr><td><code>\newline</code></td><td>salto de línea</td></tr>
+                <tr><td><code>\tab</code></td><td>tabulador</td></tr>
+                <tr><td><code>\return</code></td><td>retorno de carro</td></tr>
+                <tr><td><code>\backspace</code></td><td>retroceso</td></tr>
+                <tr><td><code>\nul</code></td><td>carácter nulo</td></tr>
+            </table>
+<pre><code class="lisp">(list \a \space \newline \( \tab)       ; (\a \space \newline \( \tab)</code></pre>
+
+            <h3>Símbolos</h3>
+            <p>
+                Un símbolo se busca en el package actual y, si no está, se crea en él. Con
+                <code>pkg:nombre</code> se usa un símbolo exportado de otro package, y
+                <code>pkg::nombre</code> es un error: los símbolos que no se exportan son privados.
+                Un keyword (<code>:nombre</code>) pertenece al package <code>keyword</code> y se
+                evalúa a sí mismo. <code>::nombre</code> crea un símbolo que no pertenece a ningún
+                package. Todo esto se explica en <a href="packages.html">Packages</a>.
+            </p>
+
+            <h3>Vectores, tablas hash y macro characters</h3>
+            <p>
+                <code>#</code> seguido de un carácter llama al macro character de ese carácter. Tras
+                <code>#(</code>, <code>#[</code> y <code>#{</code> se leen objetos hasta su pareja.
+                El package <code>alma</code> define <code>#(</code> (vectores) y <code>#{</code>
+                (tablas hash con el test <code>equal</code>). Sus elementos no se evalúan.
+            </p>
+<pre><code class="lisp">#(1 (+ 1 1))                 ; [1 (+ 1 1)]
+(gethash "a" #{"a" 1 "b" 2}) ; 1</code></pre>
+            <p>
+                Cómo definir macro characters nuevos se explica en
+                <a href="packages.html#macro-characters">Macro characters</a>.
+            </p>
+
+            <h2>Evaluación</h2>
+            <ul>
+                <li>
+                    Los enteros, strings, characters, keywords, vectores y tablas hash se evalúan a
+                    sí mismos. También <code>t</code> (verdadero) y <code>nil</code> (falso y lista
+                    vacía).
+                </li>
+                <li>
+                    Un símbolo se evalúa a su valor: el de una variable local (de
+                    <code>let</code> o de un parámetro) o, si no hay, su valor global.
+                </li>
+                <li>
+                    Una lista es una llamada. Se evalúa el primer elemento y, según lo que sea:
+                    <ul>
+                        <li>una función recibe los argumentos evaluados,</li>
+                        <li>una macro recibe los argumentos sin evaluar y su resultado se vuelve a evaluar,</li>
+                        <li>un operador especial recibe los argumentos sin evaluar y su resultado no se vuelve a evaluar,</li>
+                        <li>un vector recibe un índice y devuelve ese elemento.</li>
+                    </ul>
+                </li>
+            </ul>
+<pre><code class="lisp">(set-symbol-value 'v (vector 1 2 3))
+(v 1)                        ; 2</code></pre>
+
+            <h2>Formas básicas</h2>
+            <table>
+                <tr><th>Forma</th><th>Descripción</th></tr>
+                <tr><td><code>t</code>, <code>nil</code></td><td>verdadero; falso y lista vacía</td></tr>
+                <tr><td><code>(quote x)</code>, <code>(quasiquote x)</code></td><td>devuelve <code>x</code> sin evaluar; con quasiquote se evalúa lo que esté en <code>,</code> y <code>,@</code></td></tr>
+                <tr><td><code>(if c a [b])</code></td><td><code>a</code> si <code>c</code> no es <code>nil</code>, si no <code>b</code></td></tr>
+                <tr><td><code>(progn ...)</code></td><td>evalúa las formas y devuelve la última</td></tr>
+                <tr><td><code>(let ((a 1) (b 2)) ...)</code></td><td>variables locales</td></tr>
+                <tr><td><code>(set-symbol-value 'x v)</code></td><td>da a un símbolo su valor global</td></tr>
+                <tr><td><code>(setq 'x v)</code></td><td>cambia la variable local <code>x</code> más cercana o, si no hay, su valor global. Es una función, así que el símbolo va con quote</td></tr>
+                <tr><td><code>(eval x)</code></td><td>evalúa <code>x</code></td></tr>
+                <tr><td><code>(print x)</code></td><td>escribe <code>x</code> en la salida estándar al compilar y lo devuelve</td></tr>
+                <tr><td><code>(+ a b ...)</code></td><td>suma de enteros</td></tr>
+                <tr><td><code>(eq a b)</code></td><td>si son el mismo objeto</td></tr>
+                <tr><td><code>(list a b ...)</code>, <code>(car x)</code>, <code>(cdr x)</code></td><td>listas; <code>car</code> y <code>cdr</code> de <code>nil</code> son <code>nil</code></td></tr>
+            </table>
+<pre><code class="lisp">`(1 ,(+ 1 1) ,@(list 3 4))   ; (1 2 3 4)
+(let ((x 1) (y 2)) (+ x y))  ; 3
+(let ((x 1)) (setq 'x 2) x)  ; 2: cambia la x del let
+(setq 'g 5)                  ; 5: g no es local, así que cambia su valor global</code></pre>
+            <p>
+                Las funciones, macros y operadores especiales se explican en
+                <a href="procedimientos.html">Funciones y macros</a>, y el resto de funciones de
+                listas en <a href="datos.html">Listas, vectores y tablas hash</a>.
+            </p>
+
+            <h2>Cargar archivos</h2>
+            <p>
+                <code>load</code> ejecuta otro archivo de ALMA como si su contenido estuviera en el
+                punto donde se llama: lo que defina (funciones de ALMA, macros, declaraciones de C)
+                queda disponible después. Una ruta relativa se resuelve desde el directorio del
+                archivo que llama a <code>load</code>, no desde el directorio actual. Al terminar,
+                <code>*package*</code> vuelve a ser el package que había antes de cargarlo.
+            </p>
+            <p><code>*current-file*</code> contiene la ruta absoluta del archivo que se está cargando.</p>
+<pre><code class="lisp">(load "lib/util.alma")       ; relativo a este archivo
+(print *current-file*)</code></pre>
+
+            <h2>Importar proyectos</h2>
+            <p>
+                <code>(import-project "nombre")</code> descarga un proyecto con <code>git</code> y
+                carga su archivo <code>nombre.alma</code>. El proyecto se busca en la distribución
+                de <code>*source-distribution*</code>, que por defecto es
+                <code>https://github.com/HectareaGalbis/alma-projects</code>.
+            </p>
+            <p>
+                Una distribución es un repositorio con un archivo <code>projects.alma</code> que
+                tiene una entrada por proyecto o por otra distribución:
+            </p>
+<pre><code class="lisp">("nombre" project "https://github.com/usuario/nombre" "main")
+("otra" distribution "https://github.com/usuario/otra" "v1.0")</code></pre>
+            <p>
+                El último elemento es la rama o el tag. <code>(import-project "otra/nombre")</code>
+                busca <code>nombre</code> dentro de la distribución <code>otra</code>. Los
+                repositorios se guardan en <code>$XDG_CACHE_HOME/alma</code> (o
+                <code>~/.cache/alma</code>) y no se vuelven a descargar si ya están.
+            </p>
+
+            <nav class="pager" id="pager"></nav>
+        </main>
+        <aside class="toc" id="toc"></aside>
+    </div>
+</body>
+</html>

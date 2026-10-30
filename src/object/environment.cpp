@@ -102,7 +102,7 @@ void Environment::Layer::set_value(
 {
     if (!this->has_symbol_property(symbol, property))
         mthrow("The symbol " << symbol->get_name() << " has not the property " << property->get_name());
-    this->properties.find(symbol)->second.set_value(symbol, value);
+    this->properties.find(property)->second.set_value(symbol, value);
 }
 
 void Environment::Layer::insert_or_set_value(

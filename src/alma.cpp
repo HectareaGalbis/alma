@@ -589,7 +589,7 @@ ObjectRef<Object> Alma::setq(ObjectRef<Symbol> symbol, ObjectRef<Object> value,
     if (_environment->has_symbol_property(symbol, sym_value)) {
         _environment->set_value(symbol, sym_value, value);
     } else {
-        symbol->set_value(value);
+        this->set_symbol_value(symbol, value);
     }
     return value;
 }
