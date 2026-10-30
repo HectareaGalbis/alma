@@ -33,6 +33,7 @@ declare_function(Eq);
 declare_function(Eval);
 declare_function(List);
 declare_function(Load);
+declare_function(Import);
 declare_function(Exit);
 
 struct ExitRequest {

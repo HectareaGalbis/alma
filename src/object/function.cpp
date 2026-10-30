@@ -10,8 +10,16 @@
 #include "symbol.hpp"
 #include "vector.hpp"
 #include "interpiler/declaration.hpp"
+#include "reader.hpp"
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 // ================================================================================
 // Alma
@@ -140,6 +148,113 @@ ObjectRef<Object> Load::eval_body(
         path = std::filesystem::path(current_file.as<String>()->get_content()).parent_path() / path;
     }
     Alma::alma.load(path);
+    return Alma::alma.boolean(true);
+}
+
+// --------------------------------------------------------------------------------
+
+static std::filesystem::path import_cache_directory()
+{
+    const char* xdg_cache = std::getenv("XDG_CACHE_HOME");
+    if (xdg_cache && *xdg_cache)
+        return std::filesystem::path(xdg_cache) / "alma";
+    const char* home = std::getenv("HOME");
+    aassert(home && *home, "import cannot find the cache directory because HOME is not defined");
+    return std::filesystem::path(home) / ".cache" / "alma";
+}
+
+static std::string import_sanitize(const std::string& text)
+{
+    std::string sanitized;
+    for (char c : text)
+        sanitized += std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_' ? c : '_';
+    return sanitized;
+}
+
+static std::filesystem::path import_clone(const std::string& url, const std::optional<std::string>& ref)
+{
+    std::string dir_name = import_sanitize(url);
+    if (ref)
+        dir_name += "__" + import_sanitize(*ref);
+    std::filesystem::path cache = import_cache_directory();
+    std::filesystem::path dir = cache / dir_name;
+    if (std::filesystem::exists(dir))
+        return dir;
+    std::filesystem::create_directories(cache);
+    std::vector<std::string> args = { "git", "-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1" };
+    if (ref) {
+        args.push_back("--branch");
+        args.push_back(*ref);
+    }
+    args.push_back("--");
+    args.push_back(url);
+    args.push_back(dir.native());
+    std::vector<char*> argv;
+    for (std::string& arg : args)
+        argv.push_back(arg.data());
+    argv.push_back(nullptr);
+    pid_t pid;
+    int error = posix_spawnp(&pid, "git", nullptr, nullptr, argv.data(), environ);
+    aassert(error == 0, "import cannot run git: " << std::strerror(error));
+    int status;
+    aassert(waitpid(pid, &status, 0) == pid, "import cannot wait for git");
+    aassert(WIFEXITED(status) && WEXITSTATUS(status) == 0,
+        "import cannot clone " << url << (ref ? " at " + *ref : std::string()));
+    return dir;
+}
+
+static std::pair<std::string, std::optional<std::string>> import_find(const std::string& distribution_url,
+    const std::optional<std::string>& distribution_ref, const std::string& name, const std::string& kind)
+{
+    std::filesystem::path index = import_clone(distribution_url, distribution_ref) / "projects.alma";
+    std::ifstream input(index);
+    aassert(input.is_open(), "Cannot open the file " << index.native());
+    Reader reader(Alma::alma, index.native(), input);
+    ObjectRef<Object> string_type = Alma::alma.intern_alma_symbol("string");
+    for (std::optional<ObjectRef<Object>> obj = reader.read(); obj; obj = reader.read()) {
+        aassert(Alma::alma.consp(*obj), "Invalid entry " << Alma::alma.to_string(*obj) << " in " << index.native());
+        auto [entry, entry_rest] = obj->as<Cons>()->to_list();
+        aassert(!entry_rest && entry.size() == 4
+                && Alma::alma.typep(entry[0], string_type)
+                && Alma::alma.symbolp(entry[1])
+                && Alma::alma.typep(entry[2], string_type)
+                && Alma::alma.typep(entry[3], string_type),
+            "Invalid entry " << Alma::alma.to_string(*obj) << " in " << index.native()
+                             << ", expected (name project-or-distribution url branch-or-tag)");
+        if (entry[0].as<String>()->get_content() != name)
+            continue;
+        aassert(entry[1] == Alma::alma.intern_symbol(kind),
+            name << " in " << distribution_url << " is not a " << kind);
+        return { entry[2].as<String>()->get_content(), entry[3].as<String>()->get_content() };
+    }
+    athrow("Cannot find " << name << " in " << distribution_url);
+}
+
+ObjectRef<Object> Import::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "string" });
+    const std::string& project = arg_list[0].as<String>()->get_content();
+    std::vector<std::string> names;
+    size_t start = 0;
+    while (true) {
+        size_t end = project.find('/', start);
+        names.push_back(project.substr(start, end == std::string::npos ? std::string::npos : end - start));
+        aassert(!names.back().empty(), "Invalid project name " << project);
+        if (end == std::string::npos)
+            break;
+        start = end + 1;
+    }
+    ObjectRef<Symbol> source_sym = Alma::alma.intern_alma_symbol("*source-distribution*");
+    ObjectRef<Object> source = source_sym->get_value();
+    aassert(Alma::alma.typep(source, Alma::alma.intern_alma_symbol("string")),
+        "import cannot find " << project << " because *source-distribution* is not a string");
+    std::pair<std::string, std::optional<std::string>> location = { source.as<String>()->get_content(), std::nullopt };
+    for (size_t i = 0; i + 1 < names.size(); ++i)
+        location = import_find(location.first, location.second, names[i], "distribution");
+    location = import_find(location.first, location.second, names.back(), "project");
+    Alma::alma.load(import_clone(location.first, location.second) / (names.back() + ".alma"));
     return Alma::alma.boolean(true);
 }
 

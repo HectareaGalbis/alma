@@ -2,13 +2,13 @@
 
 #include "alma.hpp"
 #include "debug.hpp"
-#include "interpiler/operators.hpp"
-#include "interpiler/preprocessor.hpp"
-#include "interpiler/standard.hpp"
 #include "interfaces/applicable.hpp"
 #include "interfaces/emittable.hpp"
 #include "interfaces/expandable.hpp"
 #include "interfaces/transformable.hpp"
+#include "interpiler/operators.hpp"
+#include "interpiler/preprocessor.hpp"
+#include "interpiler/standard.hpp"
 #include "object/cons.hpp"
 #include "object/environment.hpp"
 #include "object/function.hpp"
@@ -41,6 +41,7 @@ void Alma::intern_functions()
     intern_function(Eval, "eval");
     intern_function(List, "list");
     intern_function(Load, "load");
+    intern_function(Import, "import");
     intern_function(Exit, "exit");
 
     // Alma: vectors
@@ -117,6 +118,8 @@ void Alma::intern_symbols()
     intern_selfevaluating_symbol(*this, "nil");
     ObjectRef<Symbol> current_file = this->intern_alma_symbol("*current-file*");
     current_file->push_value(this->intern_alma_symbol("nil"));
+    ObjectRef<Symbol> source_distribution = this->intern_alma_symbol("*source-distribution*");
+    source_distribution->push_value(this->make<String>("https://github.com/HectareaGalbis/alma-projects"));
 }
 
 Alma::Alma()
