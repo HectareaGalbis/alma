@@ -371,6 +371,12 @@ ObjectRef<Symbol> Reader::Input::find_symbol(const std::string& token)
     if (colon == std::string::npos)
         return alma.get_current_package()->intern_symbol(token);
 
+    if (token.starts_with("::")) {
+        std::string symbol_name = token.substr(2);
+        iassert(!symbol_name.empty() && symbol_name.find(':') == std::string::npos, "Invalid symbol " << token);
+        return alma.make<Symbol>(symbol_name);
+    }
+
     if (colon == 0) {
         std::string keyword_name = token.substr(1);
         iassert(!keyword_name.empty() && keyword_name.find(':') == std::string::npos, "Invalid keyword " << token);

@@ -74,6 +74,8 @@ declare_function(Symbol_package);
 declare_function(Intern);
 declare_function(Find_symbol);
 declare_function(Unintern);
+declare_function(Make_symbol);
+declare_function(Gensym);
 declare_function(Export);
 declare_function(Unexport);
 declare_function(Import_symbol);

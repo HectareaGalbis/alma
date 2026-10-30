@@ -44,7 +44,7 @@ std::string Symbol::to_string(ObjectRef<Object> self)
 {
     std::optional<ObjectRef<Package>> home = this->get_home_package();
     if (!home)
-        return "#:" + this->name;
+        return "::" + this->name;
     if ((*home)->is_keyword())
         return ":" + this->name;
     std::optional<ObjectRef<Package>> current = Alma::alma.find_current_package();

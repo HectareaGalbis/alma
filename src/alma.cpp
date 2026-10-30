@@ -79,6 +79,8 @@ void Alma::intern_functions()
     intern_function(Intern, "intern");
     intern_function(Find_symbol, "find-symbol");
     intern_function(Unintern, "unintern");
+    intern_function(Make_symbol, "make-symbol");
+    intern_function(Gensym, "gensym");
     intern_function(Export, "export");
     intern_function(Unexport, "unexport");
     intern_function(Import_symbol, "import");

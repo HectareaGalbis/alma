@@ -261,6 +261,26 @@ valores normales.
 (g 1 :k 2)               ; (1 (:k 2))
 ```
 
+#### Símbolos no internados
+
+Un símbolo no internado no pertenece a ningún package, así que no puede chocar
+con ningún otro símbolo. Se escribe con `::` delante y cada lectura crea un
+símbolo nuevo, aunque tenga el mismo nombre.
+
+| Forma | Descripción |
+|---|---|
+| `::foo` | lee un símbolo no internado nuevo llamado `foo` |
+| `(make-symbol "nombre")` | crea un símbolo no internado con ese nombre |
+| `(gensym [prefijo])` | crea un símbolo no internado con el prefijo (`"G"` por defecto) y un contador |
+
+```lisp
+(eq '::foo '::foo)       ; nil
+(symbol-package '::foo)  ; nil
+(make-symbol "bar")      ; ::bar
+(gensym)                 ; ::G0
+(gensym "X")             ; ::X1
+```
+
 ### Cargar archivos
 
 `load` ejecuta otro archivo de ALMA como si su contenido estuviera en el punto

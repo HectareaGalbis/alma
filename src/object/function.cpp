@@ -569,6 +569,24 @@ ObjectRef<Object> Unintern::eval_body(
     return Alma::alma.boolean(optional_package(arg_list, 1)->unintern_symbol(symbol));
 }
 
+ObjectRef<Object> Make_symbol::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    check_arity(arg_list, 1, 1);
+    return Alma::alma.make<Symbol>(as_string(arg_list[0])->get_content());
+}
+
+ObjectRef<Object> Gensym::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    static uint64_t counter = 0;
+    check_arity(arg_list, 0, 1);
+    std::string prefix = arg_list.empty() ? "G" : as_string(arg_list[0])->get_content();
+    return Alma::alma.make<Symbol>(prefix + std::to_string(counter++));
+}
+
 ObjectRef<Object> Export::eval_body(
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> environment [[maybe_unused]])
