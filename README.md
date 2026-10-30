@@ -339,4 +339,4 @@ Cada ejemplo indica cómo compilarlo.
 
 ## Licencia
 
-GPLv3. Ver `LICENSE`, `AUTHORS` y `CONTRIBUTORS`.
+MIT. Ver `LICENSE`, `AUTHORS` y `CONTRIBUTORS`.
