@@ -44,6 +44,27 @@ void Alma::intern_functions()
     intern_function(Import, "import");
     intern_function(Exit, "exit");
 
+    // Alma: lists
+    intern_function(Cons_create, "cons");
+    intern_function(Consp, "consp");
+    intern_function(Listp, "listp");
+    intern_function(Null, "null");
+    intern_function(Endp, "endp");
+    intern_function(Atom, "atom");
+    intern_function(First, "first");
+    intern_function(Second, "second");
+    intern_function(Third, "third");
+    intern_function(Rest, "rest");
+    intern_function(Nth, "nth");
+    intern_function(Nthcdr, "nthcdr");
+    intern_function(Last, "last");
+    intern_function(Length, "length");
+    intern_function(Append, "append");
+    intern_function(Reverse, "reverse");
+    intern_function(Member, "member");
+    intern_function(Rplaca, "rplaca");
+    intern_function(Rplacd, "rplacd");
+
     // Alma: vectors
     intern_function(Vector_create, "vector");
     intern_function(Make_vector, "make-vector");

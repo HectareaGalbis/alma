@@ -32,6 +32,30 @@ declare_function(Cdr);
 declare_function(Eq);
 declare_function(Eval);
 declare_function(List);
+
+// -----------------------------------------------------------------------------
+// Alma: lists
+
+declare_function(Cons_create);
+declare_function(Consp);
+declare_function(Listp);
+declare_function(Null);
+declare_function(Endp);
+declare_function(Atom);
+declare_function(First);
+declare_function(Second);
+declare_function(Third);
+declare_function(Rest);
+declare_function(Nth);
+declare_function(Nthcdr);
+declare_function(Last);
+declare_function(Length);
+declare_function(Append);
+declare_function(Reverse);
+declare_function(Member);
+declare_function(Rplaca);
+declare_function(Rplacd);
+
 declare_function(Load);
 declare_function(Import);
 declare_function(Exit);

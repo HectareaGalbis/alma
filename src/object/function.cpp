@@ -11,6 +11,7 @@
 #include "vector.hpp"
 #include "interpiler/declaration.hpp"
 #include "reader.hpp"
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -86,7 +87,10 @@ ObjectRef<Object> Car::eval_body(
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> environment [[maybe_unused]])
 {
-    this->check_types(arg_list, { "cons" });
+    this->check_types(arg_list, { "t" });
+    if (Alma::alma.null(arg_list[0]))
+        return arg_list[0];
+    aassert(Alma::alma.consp(arg_list[0]), "The argument number 0 must be a list");
     return Alma::alma.car(arg_list[0]);
 }
 
@@ -96,7 +100,10 @@ ObjectRef<Object> Cdr::eval_body(
     const std::vector<ObjectRef<Object>>& arg_list,
     ObjectRef<Environment> environment [[maybe_unused]])
 {
-    this->check_types(arg_list, { "cons" });
+    this->check_types(arg_list, { "t" });
+    if (Alma::alma.null(arg_list[0]))
+        return arg_list[0];
+    aassert(Alma::alma.consp(arg_list[0]), "The argument number 0 must be a list");
     return Alma::alma.cdr(arg_list[0]);
 }
 
@@ -130,6 +137,240 @@ ObjectRef<Object> List::eval_body(
     if (arg_list.empty())
         return Alma::alma.intern_alma_symbol("nil");
     return Alma::alma.make<Cons>(arg_list);
+}
+
+// ================================================================================
+// Alma: lists
+// ================================================================================
+
+static bool listp(ObjectRef<Object> obj)
+{
+    return Alma::alma.null(obj) || Alma::alma.consp(obj);
+}
+
+static void assert_list(ObjectRef<Object> obj)
+{
+    aassert(listp(obj), "Expected a list but found " << Alma::alma.to_string(obj));
+}
+
+static std::vector<ObjectRef<Object>> proper_list_elements(ObjectRef<Object> obj)
+{
+    if (Alma::alma.null(obj))
+        return {};
+    aassert(Alma::alma.consp(obj), "Expected a list but found " << Alma::alma.to_string(obj));
+    auto [list, tail] = obj.as<Cons>()->to_list();
+    aassert(Alma::alma.null(tail), "Expected a proper list but found " << Alma::alma.to_string(obj));
+    return list;
+}
+
+static ObjectRef<Object> make_list(const std::vector<ObjectRef<Object>>& elements, ObjectRef<Object> tail)
+{
+    if (elements.empty())
+        return tail;
+    return Alma::alma.make<Cons>(elements, tail);
+}
+
+static int64_t as_list_index(ObjectRef<Object> obj)
+{
+    int64_t index = obj.as<Integer>()->get_value();
+    aassert(index >= 0, "Expected a non negative index but found " << index);
+    return index;
+}
+
+static ObjectRef<Object> list_nthcdr(int64_t n, ObjectRef<Object> list)
+{
+    assert_list(list);
+    for (int64_t i = 0; i < n && Alma::alma.consp(list); ++i) {
+        list = list.as<Cons>()->get_cdr();
+        if (i + 1 < n)
+            assert_list(list);
+    }
+    return list;
+}
+
+static ObjectRef<Object> list_nth(int64_t n, ObjectRef<Object> list)
+{
+    ObjectRef<Object> tail = list_nthcdr(n, list);
+    if (Alma::alma.consp(tail))
+        return tail.as<Cons>()->get_car();
+    return Alma::alma.intern_alma_symbol("nil");
+}
+
+// --------------------------------------------------------------------------------
+
+ObjectRef<Object> Cons_create::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t" });
+    return Alma::alma.make<Cons>(arg_list[0], arg_list[1]);
+}
+
+ObjectRef<Object> Consp::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.boolean(Alma::alma.consp(arg_list[0]));
+}
+
+ObjectRef<Object> Listp::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.boolean(listp(arg_list[0]));
+}
+
+ObjectRef<Object> Null::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.boolean(Alma::alma.null(arg_list[0]));
+}
+
+ObjectRef<Object> Endp::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    assert_list(arg_list[0]);
+    return Alma::alma.boolean(Alma::alma.null(arg_list[0]));
+}
+
+ObjectRef<Object> Atom::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.boolean(!Alma::alma.consp(arg_list[0]));
+}
+
+ObjectRef<Object> First::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return list_nth(0, arg_list[0]);
+}
+
+ObjectRef<Object> Second::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return list_nth(1, arg_list[0]);
+}
+
+ObjectRef<Object> Third::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return list_nth(2, arg_list[0]);
+}
+
+ObjectRef<Object> Rest::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return list_nthcdr(1, arg_list[0]);
+}
+
+ObjectRef<Object> Nth::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "integer", "t" });
+    return list_nth(as_list_index(arg_list[0]), arg_list[1]);
+}
+
+ObjectRef<Object> Nthcdr::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "integer", "t" });
+    return list_nthcdr(as_list_index(arg_list[0]), arg_list[1]);
+}
+
+ObjectRef<Object> Last::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    ObjectRef<Object> list = arg_list[0];
+    assert_list(list);
+    while (Alma::alma.consp(list) && Alma::alma.consp(list.as<Cons>()->get_cdr()))
+        list = list.as<Cons>()->get_cdr();
+    return list;
+}
+
+ObjectRef<Object> Length::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    return Alma::alma.make<Integer>(static_cast<int64_t>(proper_list_elements(arg_list[0]).size()));
+}
+
+ObjectRef<Object> Append::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    if (arg_list.empty())
+        return Alma::alma.intern_alma_symbol("nil");
+    std::vector<ObjectRef<Object>> elements;
+    for (size_t i = 0; i + 1 < arg_list.size(); ++i) {
+        std::vector<ObjectRef<Object>> list = proper_list_elements(arg_list[i]);
+        elements.insert(elements.end(), list.begin(), list.end());
+    }
+    return make_list(elements, arg_list.back());
+}
+
+ObjectRef<Object> Reverse::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t" });
+    std::vector<ObjectRef<Object>> elements = proper_list_elements(arg_list[0]);
+    std::reverse(elements.begin(), elements.end());
+    return make_list(elements, Alma::alma.intern_alma_symbol("nil"));
+}
+
+ObjectRef<Object> Member::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "t", "t" });
+    ObjectRef<Object> list = arg_list[1];
+    assert_list(list);
+    while (Alma::alma.consp(list)) {
+        if (Alma::alma.eq(list.as<Cons>()->get_car(), arg_list[0]))
+            return list;
+        list = list.as<Cons>()->get_cdr();
+        assert_list(list);
+    }
+    return Alma::alma.intern_alma_symbol("nil");
+}
+
+ObjectRef<Object> Rplaca::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "cons", "t" });
+    arg_list[0].as<Cons>()->set_car(arg_list[1]);
+    return arg_list[0];
+}
+
+ObjectRef<Object> Rplacd::eval_body(
+    const std::vector<ObjectRef<Object>>& arg_list,
+    ObjectRef<Environment> environment [[maybe_unused]])
+{
+    this->check_types(arg_list, { "cons", "t" });
+    arg_list[0].as<Cons>()->set_cdr(arg_list[1]);
+    return arg_list[0];
 }
 
 // --------------------------------------------------------------------------------

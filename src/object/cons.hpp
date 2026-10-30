@@ -34,4 +34,6 @@ public:
 
     ObjectRef<Object> get_car();
     ObjectRef<Object> get_cdr();
+    void set_car(ObjectRef<Object> value);
+    void set_cdr(ObjectRef<Object> value);
 };

@@ -258,3 +258,13 @@ ObjectRef<Object> Cons::get_cdr()
 {
     return this->cdr;
 }
+
+void Cons::set_car(ObjectRef<Object> value)
+{
+    this->car = value;
+}
+
+void Cons::set_cdr(ObjectRef<Object> value)
+{
+    this->cdr = value;
+}
